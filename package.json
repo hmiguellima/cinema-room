@@ -1,0 +1,31 @@
+{
+  "name": "cinema-room",
+  "version": "1.0.0",
+  "description": "Cinema Room VR",
+  "private": true,
+  "scripts": {
+    "build": "webpack --mode=production --node-env=production",
+    "build:dev": "webpack --mode=development",
+    "build:prod": "webpack --mode=production --node-env=production",
+    "watch": "webpack --watch",
+    "serve": "webpack serve"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "three": "^0.130.1"
+  },
+  "devDependencies": {
+    "@types/three": "^0.130.0",
+    "@webpack-cli/generators": "^2.2.0",
+    "css-loader": "^5.2.6",
+    "html-webpack-plugin": "^5.3.2",
+    "prettier": "^2.3.2",
+    "style-loader": "^3.0.0",
+    "ts-loader": "^9.2.3",
+    "typescript": "^4.3.5",
+    "webpack": "^5.44.0",
+    "webpack-cli": "^4.7.2",
+    "webpack-dev-server": "^3.11.2"
+  }
+}
