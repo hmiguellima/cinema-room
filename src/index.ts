@@ -1,9 +1,21 @@
-import { Color, Group, HemisphereLight, PerspectiveCamera, Scene, sRGBEncoding, WebGLRenderer } from 'three';
+import { Color, Group, HemisphereLight, PerspectiveCamera, Scene, sRGBEncoding, Vector3, WebGLRenderer, XRSession } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { VRButton } from 'three/examples/jsm/webxr/VRButton';
 import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory'
 import { XRHandModelFactory } from 'three/examples/jsm/webxr/XRHandModelFactory';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { Player } from 'shaka-player';
+
+declare global {
+    class XRMediaBinding {
+        constructor(session: XRSession | null);
+        createQuadLayer(el: HTMLVideoElement, init: any): Promise<any>;
+    }
+
+    class XRRigidTransform {
+        constructor(init: any);
+    }
+}
 
 class VRControllers {
     private controller1: Group;
@@ -54,6 +66,10 @@ class VRSession {
     private controllers: VRControllers;
     private layersPromise: Promise<void>;
     private notifyLayersReady?: () => void;
+    private layersReady = false;
+    private tvPosition?: Vector3;
+    private video?: HTMLVideoElement;
+    private player?: Player;
 
     constructor(private container: HTMLElement) {
         this.scene = new Scene();
@@ -86,16 +102,71 @@ class VRSession {
         });
     }
 
-    public async loadScene() {
-        const loader = new GLTFLoader();
-        const model = await loader.loadAsync('../assets/sala1.glb');
-        this.scene.add(model.scene);
-    }
-
     public setupDebugControls() {
         const controls = new OrbitControls(this.camera, this.container);
         controls.target.set(0, 1.6, 0);
         controls.update();
+    }
+
+    public async run() {
+        await Promise.all([this.loadScene(), this.loadVideo(), this.layersPromise]);
+        if (!this.video) {
+            throw new Error('expected video');
+        }
+        const video = this.video;
+        if (!this.xrSession) {
+            throw new Error('expected xrSession');
+        }
+        const xrSession = this.xrSession;
+        if (!this.tvPosition) {
+            throw new Error('expected tvPosition');
+        }
+
+        await video.play();
+
+        const tvPosition = this.tvPosition;
+        const projLayer = (xrSession.renderState as any).layers[0];
+        const refSpace = await xrSession.requestReferenceSpace('local');
+        const layerFactory = new XRMediaBinding(xrSession);
+        const videoLayer = await layerFactory.createQuadLayer(video, {
+            space: refSpace,
+            layout: 'mono',
+            transform: new XRRigidTransform({
+                x: tvPosition.x,
+                y: tvPosition.y,
+                z: tvPosition.z,
+                w: 1.0,
+            }),
+            width: 0.8,
+        });
+        xrSession.updateRenderState({
+            layers: [projLayer, videoLayer],
+        } as any);    
+    }
+
+    private async loadScene() {
+        const loader = new GLTFLoader();
+        const model = await loader.loadAsync('../assets/sala1.glb');
+        this.scene.add(model.scene);
+        this.tvPosition = this.scene.getObjectByName('TV')?.position;
+    }
+
+    private async loadVideo() {
+        this.video = document.createElement('video');
+        this.video.crossOrigin = 'anonymous';
+        this.video.preload = 'auto';
+        this.player = new Player(this.video);
+        const config = {
+            drm: {
+              servers: {
+                'com.widevine.alpha': 'https://cwip-shaka-proxy.appspot.com/no_auth',
+              },
+            },
+        };
+        this.player.configure(config);
+        
+          // DRM protected stream
+        await this.player.load('https://storage.googleapis.com/shaka-demo-assets/sintel-widevine/dash.mpd');
     }
 
     private resize = () => {
@@ -105,11 +176,13 @@ class VRSession {
         this.renderer.setSize( window.innerWidth, window.innerHeight ); 
     }
 
-    private render = () => {
-        const xr = this.renderer.xr;
-        const session = xr.getSession();
+    private get xrSession() {
+        return this.renderer?.xr?.getSession();
+    }
 
-        if (session && (session.renderState as any).layers) {
+    private render = () => {
+        if ((this.xrSession?.renderState as any)?.layers && !this.layersReady) {
+            this.layersReady = true;
             this.notifyLayersReady?.();
         }
 
@@ -124,6 +197,6 @@ if (!containerEl) {
 }
 const session = new VRSession(containerEl);
 session.setupDebugControls();
-session.loadScene();
+session.run();
 
 document.body.appendChild(session.button);

@@ -12,7 +12,11 @@ const config = {
   },
   devServer: {
     open: true,
-    host: "localhost",
+    host: "0.0.0.0",
+    allowedHosts: [
+      '.hlimasoft.com',
+      'localhost'
+    ]
   },
   plugins: [
     new HtmlWebpackPlugin({
