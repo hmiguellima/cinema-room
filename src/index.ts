@@ -73,10 +73,8 @@ class VRSession {
 
     constructor(private container: HTMLElement) {
         this.scene = new Scene();
-        this.camera = new PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 10 );
-        this.camera.position.set( 0, 1.6, 3 );
-        this.renderer = new WebGLRenderer({ antialias: true, alpha: true });
-
+        this.camera = new PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 10);
+        this.camera.position.set(0, 0, 0);
         this.renderer = new WebGLRenderer({ antialias: true, alpha: true });
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.renderer.setClearAlpha(1);
@@ -104,12 +102,17 @@ class VRSession {
 
     public setupDebugControls() {
         const controls = new OrbitControls(this.camera, this.container);
-        controls.target.set(0, 1.6, 0);
+        controls.target.set(0, 1, -0.5);
         controls.update();
     }
 
     public async run() {
-        await Promise.all([this.loadScene(), this.loadVideo(), this.layersPromise]);
+        await this.loadScene();
+        if (!this.tvPosition) {
+            throw new Error('expected tvPosition');
+        }
+
+        await Promise.all([this.loadVideo(), this.layersPromise]);
         if (!this.video) {
             throw new Error('expected video');
         }
@@ -118,9 +121,6 @@ class VRSession {
             throw new Error('expected xrSession');
         }
         const xrSession = this.xrSession;
-        if (!this.tvPosition) {
-            throw new Error('expected tvPosition');
-        }
 
         await video.play();
 
@@ -132,9 +132,9 @@ class VRSession {
             space: refSpace,
             layout: 'mono',
             transform: new XRRigidTransform({
-                x: tvPosition.x,
-                y: tvPosition.y,
-                z: tvPosition.z,
+                x: tvPosition.x - 0.35,
+                y: tvPosition.y + 0.15,
+                z: -tvPosition.z - 0.5,
                 w: 1.0,
             }),
             width: 0.8,
