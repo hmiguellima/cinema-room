@@ -8,11 +8,15 @@ const stylesHandler = "style-loader";
 const config = {
   entry: "./src/index.ts",
   output: {
+    filename: '[hash].js',
     path: path.resolve(__dirname, "dist"),
   },
   devServer: {
     open: true,
     host: "0.0.0.0",
+    headers: {
+      'Cache-Control': 'no-store',
+    },
     allowedHosts: [
       '.hlimasoft.com',
       'localhost'
