@@ -8,7 +8,7 @@ const stylesHandler = "style-loader";
 const config = {
   entry: "./src/index.ts",
   output: {
-    filename: '[hash].js',
+    filename: '[fullhash].js',
     path: path.resolve(__dirname, "dist"),
   },
   devServer: {
