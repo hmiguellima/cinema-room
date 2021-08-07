@@ -1,4 +1,4 @@
-import { Color, Group, HemisphereLight, PerspectiveCamera, Scene, sRGBEncoding, Vector3, XRSession } from 'three';
+import { BufferGeometry, Color, DoubleSide, FrontSide, Group, HemisphereLight, Line, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, PlaneGeometry, Scene, Side, sRGBEncoding, Vector3, XRFrame, XRSession } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory'
 import { XRHandModelFactory } from 'three/examples/jsm/webxr/XRHandModelFactory';
@@ -6,6 +6,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { Player } from 'shaka-player';
 import { VRButton } from './VRButton';
 import { WebGLRenderer } from './WebGLRenderer';
+import { CanvasUI } from './CanvasUI';
 
 declare global {
     class XRMediaBinding {
@@ -25,8 +26,11 @@ class Controllers {
     private controllerGrip2: Group;
     private hand1: Group;
     private hand2: Group;
+    private leftHand?: Group;
+    private rightHand?: Group;
     private scene: Scene;
     private renderer: WebGLRenderer;
+    // private ui: CanvasUI;
 
     constructor(private camera: any) {
         this.scene = new Scene();
@@ -36,7 +40,7 @@ class Controllers {
         this.renderer.setClearColor(new Color(0), 0);
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.outputEncoding = sRGBEncoding;
-        this.renderer.shadowMap.enabled = true;
+        // this.renderer.shadowMap.enabled = true;
         this.renderer.xr.enabled = true;
 
         this.scene.add( new HemisphereLight(0x808080, 0x606060));
@@ -58,7 +62,7 @@ class Controllers {
 
         this.hand1 = this.renderer.xr.getHand(0);
         this.hand1.add(handModelFactory.createHandModel(this.hand1));
-
+        this.detectHandedness(this.hand1);
         this.scene.add(this.hand1);
 
         // Hand 2
@@ -68,7 +72,26 @@ class Controllers {
 
         this.hand2 = this.renderer.xr.getHand(1);
         this.hand2.add(handModelFactory.createHandModel(this.hand2));
+        this.detectHandedness(this.hand2);
         this.scene.add(this.hand2);
+
+        /*
+        this.ui = new CanvasUI();
+        this.ui.updateElement('body', 'Hello world');
+        this.ui.mesh.visible = false;
+        this.scene.add(this.ui.mesh);
+        */
+
+        /*
+        const geometry = new BufferGeometry().setFromPoints( [ new Vector3( 0, 0, 0 ), new Vector3( 0, 0, - 1 ) ] );
+
+        const line = new Line( geometry );
+        line.name = 'line';
+        line.scale.z = 5;
+
+        controller1.add( line.clone() );
+        controller2.add( line.clone() );
+        */
 
         this.renderer.setAnimationLoop(this.render);
     }
@@ -77,7 +100,27 @@ class Controllers {
         return this.renderer.xr.setSession(xrSession);
     }
 
-    private render = () => {
+    private detectHandedness(controller: any) {
+        controller.addEventListener('connected', (event: any) => {
+            if (event.data.handedness === 'left') {
+                console.log('left hand detected');
+                this.leftHand = controller;
+            }
+            if (event.data.handedness === 'right') {
+                console.log('right hand detected');
+                this.rightHand = controller;
+            }
+        });
+    }
+
+    private render = (time: number, frame: XRFrame) => {
+        if (!this.renderer.xr.isPresenting) return;
+        if (this.leftHand) {
+            if (this.leftHand.visible) {
+                // console.log(this.leftHand.position);
+                // console.log('left hand rotation:', this.leftHand.rotation);
+            }
+        }
         this.renderer.render(this.scene, this.camera);
     }
 }
@@ -107,7 +150,7 @@ class VRSession {
         this.renderer.setClearColor(new Color(0), 0);
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.outputEncoding = sRGBEncoding;
-        this.renderer.shadowMap.enabled = true;
+        // this.renderer.shadowMap.enabled = true;
         this.renderer.xr.enabled = true;
 
         this.scene.add( new HemisphereLight(0x808080, 0x606060));
@@ -117,7 +160,9 @@ class VRSession {
 
         this.button = VRButton.createButton(async (session) => {
             this.bottomXrLayer = await this.renderer.xr.setSession(session);
+            this.bottomXrLayer.fixedFoveation = 1;
             this.topXrLayer = await this.controllers.setupXrSession(session);
+            this.topXrLayer.fixedFoveation = 1;
             this.notifyLayersReady?.();
         });
 
@@ -134,6 +179,20 @@ class VRSession {
         const controls = new OrbitControls(this.camera, this.container);
         controls.target.set(0, 1, -0.5);
         controls.update();
+    }
+
+    public async runWithoutVideo() {
+        await Promise.all([this.loadScene(), this.layersPromise]);
+
+        if (!this.xrSession) {
+            throw new Error('expected xrSession');
+        }
+        const xrSession = this.xrSession;
+
+        xrSession.updateRenderState({
+            // layers: [this.bottomXrLayer],
+            layers: [this.bottomXrLayer, this.topXrLayer],
+        } as any);
     }
 
     public async run() {
@@ -212,6 +271,7 @@ class VRSession {
     }
 
     private render = () => {
+        if (!this.renderer.xr.isPresenting) return;
         this.renderer.render(this.scene, this.camera);
     }
 }
@@ -224,5 +284,6 @@ if (!containerEl) {
 const session = new VRSession(containerEl);
 session.setupDebugControls();
 session.run();
+// session.runWithoutVideo();
 
 document.body.appendChild(session.button);
