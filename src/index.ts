@@ -19,6 +19,14 @@ declare global {
     }
 }
 
+enum EventType {
+    play,
+    pause,
+    exit
+}
+
+type ControllerEventHandler = (evt: EventType) => void;
+
 class Controllers {
     private controller1: Group;
     private controller2: Group;
@@ -32,7 +40,7 @@ class Controllers {
     private renderer: WebGLRenderer;
     private ui: CanvasUI;
 
-    constructor(private camera: any) {
+    constructor(private camera: any, private evtHandler: ControllerEventHandler) {
         this.scene = new Scene();
         this.renderer = new WebGLRenderer({ antialias: false, alpha: true });
         this.renderer.setPixelRatio(window.devicePixelRatio);
@@ -75,8 +83,22 @@ class Controllers {
         this.hand2.add(handModelFactory.createHandModel(this.hand2));
         this.scene.add(this.hand2);
 
-        this.ui = new CanvasUI();
-        this.ui.updateElement('body', 'Hello world');
+        const uiConfig = {
+            panelSize: { width: 0.250, height: 0.125},
+            width: 256,
+            height: 128,
+            opacity: 0.7,
+            info: { type: "text", position:{ left: 6, top: 6 }, width: 244, height: 58, backgroundColor: "#aaa", fontColor: "#000" },
+            pause: { type: "button", position:{ top: 70, left: 6 }, width: 40, height: 52, backgroundColor: "#bbb", fontColor: "#bb0", hover: "#fff", onSelect: () => this.evtHandler(EventType.pause)},
+            play: { type: "button", position:{ top: 70, left: 60 }, width: 40, height: 52, backgroundColor: "#bbb", fontColor: "#bb0", hover: "#fff", onSelect: () => this.evtHandler(EventType.play) },
+	        renderer: this.renderer
+        };
+        const uiContent = {
+            info: 'playing',
+            pause: '<path>M 17 10 L 7 10 L 7 40 L 17 40 Z M 32 10 L 22 10 L 22 40 L 32 40 Z</path>',
+            play: '<path>M 32 25 L 12 10 L 12 40 Z</path>'
+        };
+        this.ui = new CanvasUI(uiContent, uiConfig);
         this.ui.mesh.visible = false;
 
         this.scene.add(this.ui.mesh);
@@ -97,6 +119,10 @@ class Controllers {
 
     public setupXrSession(xrSession: XRSession): Promise<any> {
         return this.renderer.xr.setSession(xrSession);
+    }
+
+    public updateInfoText(text: string) {
+        this.ui.updateElement('info', text);
     }
 
     private handleControllerEvents(controller: any) {
@@ -161,7 +187,7 @@ class VRSession {
 
         this.scene.add( new HemisphereLight(0x808080, 0x606060));
 
-        this.controllers = new Controllers(this.camera);
+        this.controllers = new Controllers(this.camera, this.handleControllerEvent);
         // container.appendChild(this.renderer.domElement);
 
         this.button = VRButton.createButton(async (session) => {
@@ -218,6 +244,13 @@ class VRSession {
         }
         const xrSession = this.xrSession;
 
+        video.addEventListener('play', () => {
+            this.controllers.updateInfoText('playing');
+        });
+        video.addEventListener('pause', () => {
+            this.controllers.updateInfoText('paused');
+        });
+
         await video.play();
 
         const tvPosition = this.tvPosition;
@@ -263,6 +296,17 @@ class VRSession {
         
           // DRM protected stream
         await this.player.load('https://storage.googleapis.com/shaka-demo-assets/sintel-widevine/dash.mpd');
+    }
+
+    private handleControllerEvent = (evt: EventType) => {
+        switch (evt) {
+            case EventType.pause:
+                this.video?.pause();
+                break;
+            case EventType.play:
+                this.video?.play();
+                break;
+        }
     }
 
     private resize = () => {

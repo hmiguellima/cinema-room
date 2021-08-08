@@ -476,6 +476,7 @@ update(){
                     context.save();
                     context.translate( pos.x, pos.y );
                     const path = new Path2D(code);
+                    context.fillStyle = config.fontColor;
                     context.fill(path);
                     context.restore();
                 }else{
