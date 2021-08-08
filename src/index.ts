@@ -124,6 +124,7 @@ class Controllers {
             if (this.leftController.visible && this.ui.mesh.visible) {
                 const pos = this.leftController.position;
                 this.ui.mesh.position.set(pos.x + 0.2, pos.y, pos.z);
+                this.ui.update();
             }
         }
         this.renderer.render(this.scene, this.camera);
