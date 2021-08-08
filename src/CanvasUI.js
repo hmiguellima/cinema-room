@@ -31,9 +31,9 @@ border: width color style
 class CanvasUI{
 constructor(content, config){
     const defaultconfig = {
-        panelSize: { width: 1, height: 1},
-        width: 512,
-        height: 512,
+        panelSize: { width: 0.250, height: 0.125},
+        width: 256,
+        height: 128,
         opacity: 0.7,
         body:{
             fontFamily:'Arial', 

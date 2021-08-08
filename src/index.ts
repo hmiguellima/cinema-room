@@ -26,11 +26,11 @@ class Controllers {
     private controllerGrip2: Group;
     private hand1: Group;
     private hand2: Group;
-    private leftHand?: Group;
-    private rightHand?: Group;
+    private leftController?: Group;
+    private rightController?: Group;
     private scene: Scene;
     private renderer: WebGLRenderer;
-    // private ui: CanvasUI;
+    private ui: CanvasUI;
 
     constructor(private camera: any) {
         this.scene = new Scene();
@@ -47,9 +47,11 @@ class Controllers {
 
         // controllers
         this.controller1 = this.renderer.xr.getController(0);
+        this.handleControllerEvents(this.controller1);
         this.scene.add(this.controller1);
 
         this.controller2 = this.renderer.xr.getController(1);
+        this.handleControllerEvents(this.controller2);
         this.scene.add(this.controller2);
 
         const controllerModelFactory = new XRControllerModelFactory();
@@ -62,7 +64,6 @@ class Controllers {
 
         this.hand1 = this.renderer.xr.getHand(0);
         this.hand1.add(handModelFactory.createHandModel(this.hand1));
-        this.detectHandedness(this.hand1);
         this.scene.add(this.hand1);
 
         // Hand 2
@@ -72,15 +73,13 @@ class Controllers {
 
         this.hand2 = this.renderer.xr.getHand(1);
         this.hand2.add(handModelFactory.createHandModel(this.hand2));
-        this.detectHandedness(this.hand2);
         this.scene.add(this.hand2);
 
-        /*
         this.ui = new CanvasUI();
         this.ui.updateElement('body', 'Hello world');
         this.ui.mesh.visible = false;
+
         this.scene.add(this.ui.mesh);
-        */
 
         /*
         const geometry = new BufferGeometry().setFromPoints( [ new Vector3( 0, 0, 0 ), new Vector3( 0, 0, - 1 ) ] );
@@ -89,8 +88,8 @@ class Controllers {
         line.name = 'line';
         line.scale.z = 5;
 
-        controller1.add( line.clone() );
-        controller2.add( line.clone() );
+        this.controller1.add( line.clone() );
+        this.controller2.add( line.clone() );
         */
 
         this.renderer.setAnimationLoop(this.render);
@@ -100,25 +99,31 @@ class Controllers {
         return this.renderer.xr.setSession(xrSession);
     }
 
-    private detectHandedness(controller: any) {
+    private handleControllerEvents(controller: any) {
         controller.addEventListener('connected', (event: any) => {
             if (event.data.handedness === 'left') {
                 console.log('left hand detected');
-                this.leftHand = controller;
+                this.leftController = controller;
+                controller.addEventListener('pinchstart', (event: any) => {
+                    this.ui.mesh.visible = true;
+                });
+                controller.addEventListener('pinchend', (event: any) => {
+                    this.ui.mesh.visible = false;
+                });
             }
             if (event.data.handedness === 'right') {
                 console.log('right hand detected');
-                this.rightHand = controller;
+                this.rightController = controller;
             }
         });
     }
 
     private render = (time: number, frame: XRFrame) => {
         if (!this.renderer.xr.isPresenting) return;
-        if (this.leftHand) {
-            if (this.leftHand.visible) {
-                // console.log(this.leftHand.position);
-                // console.log('left hand rotation:', this.leftHand.rotation);
+        if (this.leftController) {
+            if (this.leftController.visible && this.ui.mesh.visible) {
+                const pos = this.leftController.position;
+                this.ui.mesh.position.set(pos.x + 0.2, pos.y, pos.z);
             }
         }
         this.renderer.render(this.scene, this.camera);
@@ -215,14 +220,14 @@ class VRSession {
         await video.play();
 
         const tvPosition = this.tvPosition;
-        const refSpace = await xrSession.requestReferenceSpace('local');
+        const refSpace = this.renderer.xr.getReferenceSpace();
         const layerFactory = new XRMediaBinding(xrSession);
         const videoLayer = await layerFactory.createQuadLayer(video, {
             space: refSpace,
             layout: 'mono',
             transform: new XRRigidTransform({
                 x: tvPosition.x - 0.35,
-                y: tvPosition.y + 0.15,
+                y: tvPosition.y + 1.15,
                 z: -tvPosition.z - 0.5,
                 w: 1.0,
             }),
