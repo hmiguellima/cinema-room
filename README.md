@@ -1,15 +1,2 @@
-# 🚀 Welcome to your new awesome project!
-
-This project has been created using **webpack-cli**, you can now run
-
-```
-npm run build
-```
-
-or
-
-```
-yarn build
-```
-
-to bundle your application
+# Cinema room
+This is a playground app to test out new WebXR APIs related with video playback
