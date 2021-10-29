@@ -14,10 +14,10 @@
   "license": "ISC",
   "dependencies": {
     "shaka-player": "^3.2.0",
-    "three": "^0.130.1"
+    "three": "^0.134.0"
   },
   "devDependencies": {
-    "@types/three": "^0.130.0",
+    "@types/three": "^0.133.1",
     "@webpack-cli/generators": "^2.2.0",
     "css-loader": "^5.2.6",
     "html-webpack-plugin": "^5.3.2",
