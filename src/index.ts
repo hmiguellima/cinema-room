@@ -42,10 +42,8 @@ class Controllers {
 
     constructor(private camera: any, private evtHandler: ControllerEventHandler) {
         this.scene = new Scene();
-        this.renderer = new WebGLRenderer({ antialias: false, alpha: true });
+        this.renderer = new WebGLRenderer({ antialias: false, alpha: false });
         this.renderer.setPixelRatio(window.devicePixelRatio);
-        this.renderer.setClearAlpha(1);
-        this.renderer.setClearColor(new Color(0), 0);
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.outputEncoding = sRGBEncoding;
         // this.renderer.shadowMap.enabled = true;
@@ -117,8 +115,9 @@ class Controllers {
         this.renderer.setAnimationLoop(this.render);
     }
 
-    public setupXrSession(xrSession: XRSession): Promise<any> {
-        return this.renderer.xr.setSession(xrSession);
+    public async setupXrSession(xrSession: XRSession): Promise<any> {
+        await this.renderer.xr.setSession(xrSession);
+        return this.renderer.xr.getBaseLayer();
     }
 
     public updateInfoText(text: string) {
@@ -176,22 +175,19 @@ class VRSession {
         this.scene = new Scene();
         this.camera = new PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 10);
         this.camera.position.set(0, 0, 0);
-        this.renderer = new WebGLRenderer({ antialias: false, alpha: true });
+        this.renderer = new WebGLRenderer({ antialias: true, alpha: false });
         this.renderer.setPixelRatio(window.devicePixelRatio);
-        this.renderer.setClearAlpha(1);
-        this.renderer.setClearColor(new Color(0), 0);
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.outputEncoding = sRGBEncoding;
-        // this.renderer.shadowMap.enabled = true;
         this.renderer.xr.enabled = true;
 
         this.scene.add( new HemisphereLight(0x808080, 0x606060));
 
         this.controllers = new Controllers(this.camera, this.handleControllerEvent);
-        // container.appendChild(this.renderer.domElement);
 
         this.button = VRButton.createButton(async (session) => {
-            this.bottomXrLayer = await this.renderer.xr.setSession(session);
+            await this.renderer.xr.setSession(session);
+            this.bottomXrLayer = this.renderer.xr.getBaseLayer();
             this.bottomXrLayer.fixedFoveation = 1;
             this.topXrLayer = await this.controllers.setupXrSession(session);
             this.topXrLayer.fixedFoveation = 1;
@@ -262,7 +258,7 @@ class VRSession {
             transform: new XRRigidTransform({
                 x: tvPosition.x - 0.35,
                 y: tvPosition.y + 1.15,
-                z: -tvPosition.z - 0.5,
+                z: -tvPosition.z - 1.25,
                 w: 1.0,
             }),
             width: 0.8,

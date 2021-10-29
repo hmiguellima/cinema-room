@@ -25,6 +25,14 @@ class WebXRManager extends EventDispatcher {
 		let glBinding = null;
 		let glFramebuffer = null;
 		let glProjLayer = null;
+		let glBaseLayer = null;
+		let isMultisample = false;
+		let glMultisampledFramebuffer = null;
+		let glColorRenderbuffer = null;
+		let glDepthRenderbuffer = null;
+		let xrFrame = null;
+		let depthStyle = null;
+		let clearStyle = null;
 
 		const controllers = [];
 		const inputSourcesMap = new Map();
@@ -132,6 +140,19 @@ class WebXRManager extends EventDispatcher {
 			state.bindXRFramebuffer( null );
 			renderer.setRenderTarget( renderer.getRenderTarget() );
 
+			if ( glFramebuffer ) gl.deleteFramebuffer( glFramebuffer );
+			if ( glMultisampledFramebuffer ) gl.deleteFramebuffer( glMultisampledFramebuffer );
+			if ( glColorRenderbuffer ) gl.deleteRenderbuffer( glColorRenderbuffer );
+			if ( glDepthRenderbuffer ) gl.deleteRenderbuffer( glDepthRenderbuffer );
+			glFramebuffer = null;
+			glMultisampledFramebuffer = null;
+			glColorRenderbuffer = null;
+			glDepthRenderbuffer = null;
+			glBaseLayer = null;
+			glProjLayer = null;
+			glBinding = null;
+			session = null;
+
 			//
 
 			animation.stop();
@@ -169,6 +190,24 @@ class WebXRManager extends EventDispatcher {
 		this.getReferenceSpace = function () {
 
 			return referenceSpace;
+
+		};
+
+		this.getBaseLayer = function () {
+
+			return glProjLayer !== null ? glProjLayer : glBaseLayer;
+
+		};
+
+		this.getBinding = function () {
+
+			return glBinding;
+
+		};
+
+		this.getFrame = function () {
+
+			return xrFrame;
 
 		};
 
@@ -211,28 +250,50 @@ class WebXRManager extends EventDispatcher {
 						framebufferScaleFactor: framebufferScaleFactor
 					};
 
-					// eslint-disable-next-line no-undef
-					const baseLayer = new XRWebGLLayer( session, gl, layerInit );
+					glBaseLayer = new XRWebGLLayer( session, gl, layerInit );
 
-					session.updateRenderState( { baseLayer: baseLayer } );
+					session.updateRenderState( { baseLayer: glBaseLayer } );
+
+				} else if ( gl instanceof WebGLRenderingContext ) {
+
+					// Use old style webgl layer because we can't use MSAA
+					// WebGL2 support.
+
+					const layerInit = {
+						antialias: true,
+						alpha: attributes.alpha,
+						depth: attributes.depth,
+						stencil: attributes.stencil,
+						framebufferScaleFactor: framebufferScaleFactor
+					};
+
+					glBaseLayer = new XRWebGLLayer( session, gl, layerInit );
+
+					session.updateRenderState( { layers: [ glBaseLayer ] } );
 
 				} else {
 
-					let depthFormat = 0;
+					isMultisample = attributes.antialias;
+					let depthFormat = null;
+
 
 					if ( attributes.depth ) {
 
-						depthFormat = attributes.stencil ? gl.DEPTH_STENCIL : gl.DEPTH_COMPONENT;
+						clearStyle = gl.DEPTH_BUFFER_BIT;
+
+						if ( attributes.stencil ) clearStyle |= gl.STENCIL_BUFFER_BIT;
+
+						depthStyle = attributes.stencil ? gl.DEPTH_STENCIL_ATTACHMENT : gl.DEPTH_ATTACHMENT;
+						depthFormat = attributes.stencil ? gl.DEPTH24_STENCIL8 : gl.DEPTH_COMPONENT24;
 
 					}
 
 					const projectionlayerInit = {
-						colorFormat: attributes.alpha ? gl.RGBA : gl.RGB,
+						colorFormat: attributes.alpha ? gl.RGBA8 : gl.RGB8,
 						depthFormat: depthFormat,
 						scaleFactor: framebufferScaleFactor
 					};
 
-					// eslint-disable-next-line no-undef
 					glBinding = new XRWebGLBinding( session, gl );
 
 					glProjLayer = glBinding.createProjectionLayer( projectionlayerInit );
@@ -240,6 +301,35 @@ class WebXRManager extends EventDispatcher {
 					glFramebuffer = gl.createFramebuffer();
 
 					session.updateRenderState( { layers: [ glProjLayer ] } );
+
+					if ( isMultisample ) {
+
+						glMultisampledFramebuffer = gl.createFramebuffer();
+						glColorRenderbuffer = gl.createRenderbuffer();
+						gl.bindRenderbuffer( gl.RENDERBUFFER, glColorRenderbuffer );
+						gl.renderbufferStorageMultisample(
+							gl.RENDERBUFFER,
+							4,
+							gl.RGBA8,
+							glProjLayer.textureWidth,
+							glProjLayer.textureHeight );
+						state.bindFramebuffer( gl.FRAMEBUFFER, glMultisampledFramebuffer );
+						gl.framebufferRenderbuffer( gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, glColorRenderbuffer );
+						gl.bindRenderbuffer( gl.RENDERBUFFER, null );
+
+						if ( depthFormat !== null ) {
+
+							glDepthRenderbuffer = gl.createRenderbuffer();
+							gl.bindRenderbuffer( gl.RENDERBUFFER, glDepthRenderbuffer );
+							gl.renderbufferStorageMultisample( gl.RENDERBUFFER, 4, depthFormat, glProjLayer.textureWidth, glProjLayer.textureHeight );
+							gl.framebufferRenderbuffer( gl.FRAMEBUFFER, depthStyle, gl.RENDERBUFFER, glDepthRenderbuffer );
+							gl.bindRenderbuffer( gl.RENDERBUFFER, null );
+
+						}
+
+						state.bindFramebuffer( gl.FRAMEBUFFER, null );
+
+					}
 
 				}
 
@@ -251,8 +341,6 @@ class WebXRManager extends EventDispatcher {
 				scope.isPresenting = true;
 
 				scope.dispatchEvent( { type: 'sessionstart' } );
-
-				return glProjLayer;
 
 			}
 
@@ -451,6 +539,43 @@ class WebXRManager extends EventDispatcher {
 
 		};
 
+		this.getFoveation = function () {
+
+			if ( glProjLayer !== null ) {
+
+				return glProjLayer.fixedFoveation;
+
+			}
+
+			if ( glBaseLayer !== null ) {
+
+				return glBaseLayer.fixedFoveation;
+
+			}
+
+			return undefined;
+
+		};
+
+		this.setFoveation = function ( foveation ) {
+
+			// 0 = no foveation = full resolution
+			// 1 = maximum foveation = the edges render at lower resolution
+
+			if ( glProjLayer !== null ) {
+
+				glProjLayer.fixedFoveation = foveation;
+
+			}
+
+			if ( glBaseLayer !== null && glBaseLayer.fixedFoveation !== undefined ) {
+
+				glBaseLayer.fixedFoveation = foveation;
+
+			}
+
+		};
+
 		// Animation Loop
 
 		let onAnimationFrameCallback = null;
@@ -458,16 +583,15 @@ class WebXRManager extends EventDispatcher {
 		function onAnimationFrame( time, frame ) {
 
 			pose = frame.getViewerPose( referenceSpace );
+			xrFrame = frame;
 
 			if ( pose !== null ) {
 
 				const views = pose.views;
 
-				const baseLayer = session.renderState.baseLayer;
+				if ( glBaseLayer !== null ) {
 
-				if ( session.renderState.layers === undefined ) {
-
-					state.bindXRFramebuffer( baseLayer.framebuffer );
+					state.bindXRFramebuffer( glBaseLayer.framebuffer );
 
 				}
 
@@ -481,7 +605,6 @@ class WebXRManager extends EventDispatcher {
 
 					cameraVRNeedsUpdate = true;
 
-
 				}
 
 				for ( let i = 0; i < views.length; i ++ ) {
@@ -490,9 +613,9 @@ class WebXRManager extends EventDispatcher {
 
 					let viewport = null;
 
-					if ( session.renderState.layers === undefined ) {
+					if ( glBaseLayer !== null ) {
 
-						viewport = baseLayer.getViewport( view );
+						viewport = glBaseLayer.getViewport( view );
 
 					} else {
 
@@ -500,13 +623,13 @@ class WebXRManager extends EventDispatcher {
 
 						state.bindXRFramebuffer( glFramebuffer );
 
-						gl.framebufferTexture2D( gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, glSubImage.colorTexture, 0 );
-
 						if ( glSubImage.depthStencilTexture !== undefined ) {
 
-							gl.framebufferTexture2D( gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, glSubImage.depthStencilTexture, 0 );
+							gl.framebufferTexture2D( gl.FRAMEBUFFER, depthStyle, gl.TEXTURE_2D, glSubImage.depthStencilTexture, 0 );
 
 						}
+
+						gl.framebufferTexture2D( gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, glSubImage.colorTexture, 0 );
 
 						viewport = glSubImage.viewport;
 
@@ -515,9 +638,7 @@ class WebXRManager extends EventDispatcher {
 					const camera = cameras[ i ];
 
 					camera.matrix.fromArray( view.transform.matrix );
-
 					camera.projectionMatrix.fromArray( view.projectionMatrix );
-
 					camera.viewport.set( viewport.x, viewport.y, viewport.width, viewport.height );
 
 					if ( i === 0 ) {
@@ -531,6 +652,14 @@ class WebXRManager extends EventDispatcher {
 						cameraVR.cameras.push( camera );
 
 					}
+
+				}
+
+				if ( isMultisample ) {
+
+					state.bindXRFramebuffer( glMultisampledFramebuffer );
+
+					if ( clearStyle !== null ) gl.clear( clearStyle );
 
 				}
 
@@ -551,9 +680,32 @@ class WebXRManager extends EventDispatcher {
 
 			if ( onAnimationFrameCallback ) onAnimationFrameCallback( time, frame );
 
+			if ( isMultisample ) {
+
+				const width = glProjLayer.textureWidth;
+				const height = glProjLayer.textureHeight;
+
+				state.bindFramebuffer( gl.READ_FRAMEBUFFER, glMultisampledFramebuffer );
+				state.bindFramebuffer( gl.DRAW_FRAMEBUFFER, glFramebuffer );
+				// Invalidate the depth here to avoid flush of the depth data to main memory.
+				gl.invalidateFramebuffer( gl.READ_FRAMEBUFFER, [ depthStyle ] );
+				gl.invalidateFramebuffer( gl.DRAW_FRAMEBUFFER, [ depthStyle ] );
+				gl.blitFramebuffer( 0, 0, width, height, 0, 0, width, height, gl.COLOR_BUFFER_BIT, gl.NEAREST );
+				// Invalidate the MSAA buffer because it's not needed anymore.
+				gl.invalidateFramebuffer( gl.READ_FRAMEBUFFER, [ gl.COLOR_ATTACHMENT0 ] );
+				state.bindFramebuffer( gl.READ_FRAMEBUFFER, null );
+				state.bindFramebuffer( gl.DRAW_FRAMEBUFFER, null );
+
+				state.bindFramebuffer( gl.FRAMEBUFFER, glMultisampledFramebuffer );
+
+			}
+
+			xrFrame = null;
+
 		}
 
 		const animation = new WebGLAnimation();
+
 		animation.setAnimationLoop( onAnimationFrame );
 
 		this.setAnimationLoop = function ( callback ) {
