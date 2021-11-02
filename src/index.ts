@@ -170,6 +170,7 @@ class VRSession {
         this.controllers = new Controllers(this.renderer, this.scene, this.handleControllerEvent);
 
         this.button = VRButton.createButton(async (session) => {
+            (session as any).updateTargetFrameRate(72);
             await this.renderer.xr.setSession(session);
             this.xrLayer = (this.renderer.xr as any).getBaseLayer();
             this.xrLayer.fixedFoveation = 1;
@@ -192,7 +193,10 @@ class VRSession {
     }
 
     public async run() {
-        await Promise.all([this.loadScene(), this.loadVideo(), this.layersPromise]);
+        // await Promise.all([this.loadScene(), this.loadVideo(), this.layersPromise]);
+
+        await Promise.all([this.loadVideo(), this.layersPromise]);
+        this.tvPosition = { x: 0, y: 0, z: 1 } as any;
 
         if (!this.tvPosition) {
             throw new Error('expected tvPosition');
@@ -233,7 +237,8 @@ class VRSession {
                 z: -tvPosition.z - 2.5,
                 w: 1.0,
             }),
-            height: 0.7,
+            width: 2.35,
+            height: 1,
         });
         xrSession.updateRenderState({
             layers: [videoLayer, this.xrLayer],
