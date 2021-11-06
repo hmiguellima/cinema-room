@@ -239,7 +239,7 @@ class HomeCinemaSession {
 
     private async loadScene() {
         const loader = new GLTFLoader();
-        const model = await loader.loadAsync('../assets/home-cinema.glb');
+        const model = await loader.loadAsync('assets/home-cinema.glb');
         model.scene.translateZ(0.2);
         this.scene.add(model.scene);
         this.tvPosition = this.scene.getObjectByName('TV')?.position;
