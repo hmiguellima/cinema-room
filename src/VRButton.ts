@@ -2,7 +2,7 @@ import { XRSession } from "three";
 
 export class VRButton {
 
-	static createButton(sessionStartCallback: (session: XRSession) => void ) {
+	static createButton(onBeforeStart: () => Promise<void>, sessionStartCallback: (session: XRSession) => void ) {
 		const button = document.createElement( 'button' );
 
 		function showEnterVR( /*device*/ ) {
@@ -52,9 +52,10 @@ export class VRButton {
 
 			};
 
-			button.onclick = function () {
+			button.onclick = async () => {
 
 				if ( currentSession === null ) {
+					await onBeforeStart();
 
 					// WebXR's requestReferenceSpace only works if the corresponding feature
 					// was requested at session creation time. For simplicity, just ask for

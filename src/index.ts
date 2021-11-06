@@ -1,8 +1,7 @@
-import { BufferGeometry, Color, DoubleSide, FrontSide, HemisphereLight, Line, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, PlaneGeometry, Scene, Side, sRGBEncoding, Vector3, XRFrame, XRSession } from 'three';
+import { HemisphereLight, PerspectiveCamera, Scene, sRGBEncoding, Vector3, XRSession } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory'
 import { XRHandModelFactory } from 'three/examples/jsm/webxr/XRHandModelFactory';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { Player } from 'shaka-player';
 import { VRButton } from './VRButton';
 import { WebGLRenderer, Group } from 'three';
@@ -138,66 +137,52 @@ class Controllers {
     }
 }
 
-class VRSession {
-    public readonly button: HTMLElement;
-
+class HomeCinemaSession {
     private scene: Scene;
     private camera: PerspectiveCamera;
     private renderer: WebGLRenderer;
-    private controllers: Controllers;
-    private layersPromise: Promise<void>;
-    private notifyLayersReady?: () => void;
+    private controllers: Controllers | null;
     private tvPosition?: Vector3;
-    private video?: HTMLVideoElement;
-    private player?: Player;
     private xrLayer: any;
     private videoQualityInterval: number | undefined;
     private isPlaying = false;
     private roomLight = new HemisphereLight(0x808080, 0x606060);
+    private xrSession: XRSession |  null;
 
-    constructor(private container: HTMLElement) {
+    constructor(xrSession: XRSession, private video: HTMLVideoElement) {
+        this.xrSession = xrSession;
         this.scene = new Scene();
+
         this.camera = new PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 10);
         this.camera.position.set(0, 0, 0);
+
         this.renderer = new WebGLRenderer({ antialias: true, alpha: false });
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.outputEncoding = sRGBEncoding;
         this.renderer.xr.enabled = true;
-
-        this.scene.add(this.roomLight);
-
-        this.controllers = new Controllers(this.renderer, this.scene, this.handleControllerEvent);
-
-        this.button = VRButton.createButton(async (session) => {
-            (session as any).updateTargetFrameRate(72);
-            await this.renderer.xr.setSession(session);
-            this.xrLayer = (this.renderer.xr as any).getBaseLayer();
-            this.xrLayer.fixedFoveation = 1;
-            this.notifyLayersReady?.();
-        });
-
-        window.addEventListener( 'resize', this.resize);
-
         this.renderer.setAnimationLoop(this.render);
 
-        this.layersPromise = new Promise<void>((resolve) => {
-            this.notifyLayersReady = resolve;
-        });
-    }
+        this.scene.add(this.roomLight);
+        this.controllers = new Controllers(this.renderer, this.scene, this.handleControllerEvent);
 
-    public setupDebugControls() {
-        const controls = new OrbitControls(this.camera, this.container);
-        controls.target.set(0, 1, -0.5);
-        controls.update();
+        window.addEventListener( 'resize', this.resize);
+        xrSession.addEventListener('end', () => {
+            this.destroy();
+        });
     }
 
     public async run() {
-        // await Promise.all([this.loadScene(), this.loadVideo(), this.layersPromise]);
+        if (!this.xrSession) {
+            throw new Error('expected xrSession');
+        }
+        const xrSession = this.xrSession;
 
-        await Promise.all([this.loadVideo(), this.layersPromise]);
+        await Promise.all([this.renderer.xr.setSession(xrSession), this.loadScene()]);
+        this.xrLayer = (this.renderer.xr as any).getBaseLayer();
+        this.xrLayer.fixedFoveation = 1;
+    
         this.tvPosition = { x: 0, y: 0, z: 1 } as any;
-
         if (!this.tvPosition) {
             throw new Error('expected tvPosition');
         }
@@ -205,24 +190,17 @@ class VRSession {
         if (!this.video) {
             throw new Error('expected video');
         }
-
         const video = this.video;
-        if (!this.xrSession) {
-            throw new Error('expected xrSession');
-        }
-        const xrSession = this.xrSession;
-
         video.addEventListener('play', () => {
             this.isPlaying = true;
-            this.controllers.updateInfoText('playing');
+            this.controllers?.updateInfoText('playing');
             this.roomLight.intensity = 0.2;
         });
         video.addEventListener('pause', () => {
             this.isPlaying = false;
-            this.controllers.updateInfoText('paused');
+            this.controllers?.updateInfoText('paused');
             this.roomLight.intensity = 1;
         });
-
         await video.play();
 
         const tvPosition = this.tvPosition;
@@ -245,19 +223,18 @@ class VRSession {
         } as any);
 
         this.videoQualityInterval = window.setInterval(() => {
-            if (this.video && !this.video.paused && this.isPlaying) {
+            if (this.controllers && this.video && !this.video.paused && this.isPlaying) {
                 const quality = this.video.getVideoPlaybackQuality();
                 this.controllers.updateInfoText(`playing-${quality.totalVideoFrames}/${quality.droppedVideoFrames}`);
             }
         }, 1000);
-
-        xrSession.addEventListener('end', () => {
-            this.destroy();
-        });
     }
 
     private destroy() {
-        window.location.reload();
+        window.clearInterval(this.videoQualityInterval);
+        window.removeEventListener( 'resize', this.resize);
+        this.xrSession = null;
+        this.controllers = null;
     }
 
     private async loadScene() {
@@ -266,27 +243,6 @@ class VRSession {
         model.scene.translateZ(0.2);
         this.scene.add(model.scene);
         this.tvPosition = this.scene.getObjectByName('TV')?.position;
-    }
-
-    private async loadVideo() {
-        this.video = document.createElement('video');
-        this.video.crossOrigin = 'anonymous';
-        this.video.preload = 'auto';
-
-        this.player = new Player(this.video);
-        const config = {
-            drm: {
-              servers: {
-                'com.widevine.alpha': 'https://cwip-shaka-proxy.appspot.com/no_auth',
-              },
-            },
-        };
-        this.player.configure(config);
-        
-          // DRM protected stream
-        await this.player.load('https://storage.googleapis.com/shaka-demo-assets/sintel-widevine/dash.mpd');
-
-        return Promise.resolve();
     }
 
     private handleControllerEvent = (evt: EventType) => {
@@ -298,6 +254,7 @@ class VRSession {
                 this.video?.play();
                 break;
             case EventType.exit:
+                this.video.pause();
                 this.xrSession?.end();
                 break;
         }
@@ -310,24 +267,63 @@ class VRSession {
         this.renderer.setSize( window.innerWidth, window.innerHeight ); 
     }
 
-    private get xrSession() {
-        return this.renderer?.xr?.getSession();
-    }
-
     private render = () => {
         if (!this.renderer.xr.isPresenting) return;
         this.renderer.render(this.scene, this.camera);
-        this.controllers.update();
+        this.controllers?.update();
     }
 }
 
-const containerEl = document.getElementById('container');
+async function loadVideo(video: HTMLVideoElement) {
+    const player = new Player(video);
+    const config = {
+        drm: {
+          servers: {
+            'com.widevine.alpha': 'https://cwip-shaka-proxy.appspot.com/no_auth',
+          },
+        },
+    };
+    player.configure(config);
 
+    // DRM protected stream
+    await player.load('https://storage.googleapis.com/shaka-demo-assets/sintel-widevine/dash.mpd');
+}
+
+async function beforeStart() {
+    videoEl.pause();
+    containerEl?.removeChild(videoEl);        
+    await new Promise(resolve => window.setTimeout(resolve, 100));
+}
+
+function startImmersiveSession(session: XRSession) {
+    (session as any).updateTargetFrameRate(72);
+    immersiveSession = new HomeCinemaSession(session, videoEl);
+    immersiveSession.run();    
+    session.addEventListener('end', () => {
+        window.setTimeout(() => {
+            immersiveSession = null;
+            containerEl?.appendChild(videoEl);
+            videoEl.play();
+        }, 100);
+    })
+}
+
+const containerEl = document.getElementById('container');
 if (!containerEl) {
     throw new Error('invalid container element');
 }
-const session = new VRSession(containerEl);
-session.setupDebugControls();
-session.run();
 
-document.body.appendChild(session.button);
+const videoEl = document.createElement('video');
+videoEl.crossOrigin = 'anonymous';
+videoEl.preload = 'auto';
+videoEl.autoplay = true;
+videoEl.controls = true;
+
+containerEl.appendChild(videoEl);
+
+let immersiveSession: HomeCinemaSession | null;
+
+loadVideo(videoEl).then(() => {
+    const button = VRButton.createButton(beforeStart, startImmersiveSession);    
+    document.body.appendChild(button);
+});
