@@ -1,4 +1,4 @@
-import { HemisphereLight, PerspectiveCamera, Scene, sRGBEncoding, Vector3, XRSession } from 'three';
+import { HemisphereLight, PerspectiveCamera, Scene, sRGBEncoding, Vector3, XRSession, Object3D } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory'
 import { XRHandModelFactory } from 'three/examples/jsm/webxr/XRHandModelFactory';
@@ -37,15 +37,15 @@ class Controllers {
     private rightController?: Group;
     private ui: CanvasUI;
 
-    constructor(private renderer: WebGLRenderer, private scene: Scene, private evtHandler: ControllerEventHandler) {
+    constructor(private renderer: WebGLRenderer, private seat: Object3D, private evtHandler: ControllerEventHandler) {
         // controllers
         this.controller1 = this.renderer.xr.getController(0);
         this.handleControllerEvents(this.controller1);
-        this.scene.add(this.controller1);
+        this.seat.add(this.controller1);
 
         this.controller2 = this.renderer.xr.getController(1);
         this.handleControllerEvents(this.controller2);
-        this.scene.add(this.controller2);
+        this.seat.add(this.controller2);
 
         const controllerModelFactory = new XRControllerModelFactory();
         const handModelFactory = new XRHandModelFactory().setPath('./models/fbx/');
@@ -53,20 +53,20 @@ class Controllers {
         // Hand 1
         this.controllerGrip1 = this.renderer.xr.getControllerGrip(0);
         this.controllerGrip1.add(controllerModelFactory.createControllerModel(this.controllerGrip1));
-        this.scene.add(this.controllerGrip1);
+        this.seat.add(this.controllerGrip1);
 
         this.hand1 = this.renderer.xr.getHand(0);
         this.hand1.add(handModelFactory.createHandModel(this.hand1));
-        this.scene.add(this.hand1);
+        this.seat.add(this.hand1);
 
         // Hand 2
         this.controllerGrip2 = this.renderer.xr.getControllerGrip(1);
         this.controllerGrip2.add( controllerModelFactory.createControllerModel(this.controllerGrip2));
-        this.scene.add(this.controllerGrip2);
+        this.seat.add(this.controllerGrip2);
 
         this.hand2 = this.renderer.xr.getHand(1);
         this.hand2.add(handModelFactory.createHandModel(this.hand2));
-        this.scene.add(this.hand2);
+        this.seat.add(this.hand2);
 
         const uiConfig = {
             panelSize: { width: 0.250, height: 0.125},
@@ -88,7 +88,7 @@ class Controllers {
         this.ui = new CanvasUI(uiContent, uiConfig);
         this.ui.mesh.visible = false;
 
-        this.scene.add(this.ui.mesh);
+        this.seat.add(this.ui.mesh);
 
         /*
         const geometry = new BufferGeometry().setFromPoints( [ new Vector3( 0, 0, 0 ), new Vector3( 0, 0, - 1 ) ] );
@@ -148,13 +148,15 @@ class HomeCinemaSession {
     private isPlaying = false;
     private roomLight = new HemisphereLight(0x808080, 0x606060);
     private xrSession: XRSession |  null;
+    private seat = new Object3D();
 
     constructor(xrSession: XRSession, private video: HTMLVideoElement) {
         this.xrSession = xrSession;
         this.scene = new Scene();
 
         this.camera = new PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 10);
-        this.camera.position.set(0, 0, 0);
+        this.seat.add(this.camera);
+        this.scene.add(this.seat);
 
         this.renderer = new WebGLRenderer({ antialias: true, alpha: false });
         this.renderer.setPixelRatio(window.devicePixelRatio);
@@ -164,7 +166,7 @@ class HomeCinemaSession {
         this.renderer.setAnimationLoop(this.render);
 
         this.scene.add(this.roomLight);
-        this.controllers = new Controllers(this.renderer, this.scene, this.handleControllerEvent);
+        this.controllers = new Controllers(this.renderer, this.seat, this.handleControllerEvent);
 
         window.addEventListener( 'resize', this.resize);
         xrSession.addEventListener('end', () => {
@@ -222,10 +224,17 @@ class HomeCinemaSession {
             layers: [videoLayer, this.xrLayer],
         } as any);
 
+        let lastVideoFrames = 0;
         this.videoQualityInterval = window.setInterval(() => {
             if (this.controllers && this.video && !this.video.paused && this.isPlaying) {
                 const quality = this.video.getVideoPlaybackQuality();
-                this.controllers.updateInfoText(`playing-${quality.totalVideoFrames}/${quality.droppedVideoFrames}`);
+                const videoFrames = quality.totalVideoFrames - quality.droppedVideoFrames;
+                if (lastVideoFrames) {
+                    this.controllers.updateInfoText(`playing at ${videoFrames - lastVideoFrames}fps`);
+                }
+                lastVideoFrames = videoFrames;
+            } else {
+                lastVideoFrames = 0;
             }
         }, 1000);
     }
@@ -240,9 +249,10 @@ class HomeCinemaSession {
     private async loadScene() {
         const loader = new GLTFLoader();
         const model = await loader.loadAsync('assets/home-cinema.glb');
-        model.scene.translateZ(0.2);
         this.scene.add(model.scene);
-        this.tvPosition = this.scene.getObjectByName('TV')?.position;
+        const tvObject = this.scene.getObjectByName('TV');
+        this.tvPosition = tvObject?.position;
+        this.seat.translateZ(-0.2);
     }
 
     private handleControllerEvent = (evt: EventType) => {
