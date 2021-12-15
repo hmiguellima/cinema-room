@@ -30,6 +30,10 @@ border: width color style
 */
 class CanvasUI{
 constructor(content, config){
+    this.tmpVector1 = new Vector3();
+	this.tmpVector2 = new Vector3();
+	this.tmpVector3 = new Vector3();
+
     const defaultconfig = {
         panelSize: { width: 0.250, height: 0.125},
         width: 256,
@@ -276,6 +280,10 @@ setRotation(x, y, z){
     this.mesh.rotation.set(x, y, z);
 }
 
+setRightIndex(rightIndex) {
+    this.rightIndex = rightIndex;
+}
+
 updateElement( name, content ){
     let elm = this.content[name];
     
@@ -386,7 +394,31 @@ scroll( index ){
         if (this.intersectMesh) this.intersectMesh[index].visible = false;
     }
 }
-    
+
+handleHand(indexFinger) {
+    const fingerPhalanx = indexFinger.phalanx.getWorldPosition(this.tmpVector1);
+    const fingerTip = indexFinger.tip.getWorldPosition(this.tmpVector2);
+    const fingerDir = this.tmpVector3.subVectors(fingerTip, fingerPhalanx);
+
+    this.raycaster.ray.origin.copy(fingerPhalanx);
+    this.raycaster.ray.direction.copy(fingerDir);
+
+    const intersects = this.raycaster.intersectObject(this.mesh);
+    const meshPosition = this.mesh.getWorldPosition(this.tmpVector1);
+    const distance = Math.abs(meshPosition.z - fingerTip.z);
+
+    if (intersects.length > 0 && distance < 0.05) {
+        this.hover(0, intersects[0].uv);
+        this.intersects[0] = intersects[0];
+        if (this.selectedElements[0] && distance < 0.005) {
+            this.selectedElements[0].onSelect?.();
+        }
+    } else {
+        this.hover(0);
+        this.intersects[0] = undefined;
+    }
+}
+
 handleController( controller, index ){
     this.mat4.identity().extractRotation( controller.matrixWorld );
 
@@ -409,8 +441,12 @@ handleController( controller, index ){
 update(){    
     if (this.mesh===undefined) return;
         
+    /*
     if ( this.controller ) this.handleController( this.controller, 0 );
     if ( this.controller1 ) this.handleController( this.controller1, 1 );
+    */
+
+    if (this.rightIndex) this.handleHand(this.rightIndex);
 
     if ( this.keyboard && this.keyboard.visible ) this.keyboard.update();
     

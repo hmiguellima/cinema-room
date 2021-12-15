@@ -1,4 +1,4 @@
-import { HemisphereLight, PerspectiveCamera, Scene, sRGBEncoding, Vector3, XRSession, Object3D } from 'three';
+import { HemisphereLight, PerspectiveCamera, Scene, sRGBEncoding, Vector3, XRSession, Object3D, BufferGeometry, Line } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory'
 import { XRHandModelFactory } from 'three/examples/jsm/webxr/XRHandModelFactory';
@@ -33,19 +33,19 @@ class Controllers {
     private controllerGrip2: Group;
     private hand1: Group;
     private hand2: Group;
-    private leftController?: Group;
-    private rightController?: Group;
+    private leftJoints: any;
+    private rightJoints: any;
+    private rightIndex: any;
     private ui: CanvasUI;
+    private line: Line;
 
-    constructor(private renderer: WebGLRenderer, private seat: Object3D, private evtHandler: ControllerEventHandler) {
+    constructor(private renderer: WebGLRenderer, private scene: Scene, private evtHandler: ControllerEventHandler) {
         // controllers
         this.controller1 = this.renderer.xr.getController(0);
-        this.handleControllerEvents(this.controller1);
-        this.seat.add(this.controller1);
+        this.scene.add(this.controller1);
 
         this.controller2 = this.renderer.xr.getController(1);
-        this.handleControllerEvents(this.controller2);
-        this.seat.add(this.controller2);
+        this.scene.add(this.controller2);
 
         const controllerModelFactory = new XRControllerModelFactory();
         const handModelFactory = new XRHandModelFactory().setPath('./models/fbx/');
@@ -53,20 +53,24 @@ class Controllers {
         // Hand 1
         this.controllerGrip1 = this.renderer.xr.getControllerGrip(0);
         this.controllerGrip1.add(controllerModelFactory.createControllerModel(this.controllerGrip1));
-        this.seat.add(this.controllerGrip1);
+        this.scene.add(this.controllerGrip1);
 
         this.hand1 = this.renderer.xr.getHand(0);
         this.hand1.add(handModelFactory.createHandModel(this.hand1));
-        this.seat.add(this.hand1);
+        this.scene.add(this.hand1);
 
         // Hand 2
         this.controllerGrip2 = this.renderer.xr.getControllerGrip(1);
         this.controllerGrip2.add( controllerModelFactory.createControllerModel(this.controllerGrip2));
-        this.seat.add(this.controllerGrip2);
+        this.scene.add(this.controllerGrip2);
 
         this.hand2 = this.renderer.xr.getHand(1);
         this.hand2.add(handModelFactory.createHandModel(this.hand2));
-        this.seat.add(this.hand2);
+        this.scene.add(this.hand2);
+
+        // handle controller/hand events
+        this.handleControllerEvents(this.controller1, this.hand1);
+        this.handleControllerEvents(this.controller2, this.hand2);
 
         const uiConfig = {
             panelSize: { width: 0.250, height: 0.125},
@@ -88,15 +92,15 @@ class Controllers {
         this.ui = new CanvasUI(uiContent, uiConfig);
         this.ui.mesh.visible = false;
 
-        this.seat.add(this.ui.mesh);
+        this.scene.add(this.ui.mesh);
 
-        /*
         const geometry = new BufferGeometry().setFromPoints( [ new Vector3( 0, 0, 0 ), new Vector3( 0, 0, - 1 ) ] );
 
-        const line = new Line( geometry );
-        line.name = 'line';
-        line.scale.z = 5;
+        this.line = new Line( geometry );
+        this.line.name = 'line';
 
+        this.scene.add(this.line);
+        /*
         this.controller1.add( line.clone() );
         this.controller2.add( line.clone() );
         */
@@ -108,30 +112,38 @@ class Controllers {
 
     public update = () => {
         if (!this.renderer.xr.isPresenting) return;
-        if (this.leftController) {
-            if (this.leftController.visible && this.ui.mesh.visible) {
-                const pos = this.leftController.position;
+        if (this.leftJoints) {
+            const leftPinky = this.leftJoints['pinky-finger-tip'];
+            const leftThumb = this.leftJoints['thumb-tip'];
+
+            this.ui.mesh.visible = leftPinky.position.x - leftThumb.position.x > leftThumb.position.distanceTo(leftPinky.position) * 2 / 3;
+
+            if (this.ui.mesh.visible) {
+                const pos = leftPinky.position;
                 this.ui.mesh.position.set(pos.x + 0.2, pos.y, pos.z);
-                this.ui.update();
             }
+        }
+        if (this.rightJoints && !this.rightIndex) {
+            const rightIndexTip = this.rightJoints['index-finger-tip'];
+            const rightIndexPhalanxDistal = this.rightJoints['index-finger-phalanx-distal'];
+            this.rightIndex = {tip: rightIndexTip, phalanx: rightIndexPhalanxDistal};
+            this.ui.setRightIndex(this.rightIndex);
+        }
+
+        if (this.ui.mesh.visible) {
+            this.ui.update();
         }
     }
 
-    private handleControllerEvents(controller: any) {
+    private handleControllerEvents(controller: Group, hand: Group) {
         controller.addEventListener('connected', (event: any) => {
             if (event.data.handedness === 'left') {
                 console.log('left hand detected');
-                this.leftController = controller;
-                controller.addEventListener('pinchstart', (event: any) => {
-                    this.ui.mesh.visible = true;
-                });
-                controller.addEventListener('pinchend', (event: any) => {
-                    this.ui.mesh.visible = false;
-                });
+                this.leftJoints = (hand as any).joints;
             }
             if (event.data.handedness === 'right') {
                 console.log('right hand detected');
-                this.rightController = controller;
+                this.rightJoints = (hand as any).joints;
             }
         });
     }
@@ -142,21 +154,20 @@ class HomeCinemaSession {
     private camera: PerspectiveCamera;
     private renderer: WebGLRenderer;
     private controllers: Controllers | null;
-    private tvPosition?: Vector3;
+    private tv?: Object3D;
     private xrLayer: any;
     private videoQualityInterval: number | undefined;
     private isPlaying = false;
     private roomLight = new HemisphereLight(0x808080, 0x606060);
     private xrSession: XRSession |  null;
-    private seat = new Object3D();
+    private room?: Group;
 
     constructor(xrSession: XRSession, private video: HTMLVideoElement) {
         this.xrSession = xrSession;
         this.scene = new Scene();
 
         this.camera = new PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 10);
-        this.seat.add(this.camera);
-        this.scene.add(this.seat);
+        this.scene.add(this.camera);
 
         this.renderer = new WebGLRenderer({ antialias: true, alpha: false });
         this.renderer.setPixelRatio(window.devicePixelRatio);
@@ -166,7 +177,7 @@ class HomeCinemaSession {
         this.renderer.setAnimationLoop(this.render);
 
         this.scene.add(this.roomLight);
-        this.controllers = new Controllers(this.renderer, this.seat, this.handleControllerEvent);
+        this.controllers = new Controllers(this.renderer, this.scene, this.handleControllerEvent);
 
         window.addEventListener( 'resize', this.resize);
         xrSession.addEventListener('end', () => {
@@ -183,15 +194,17 @@ class HomeCinemaSession {
         await Promise.all([this.renderer.xr.setSession(xrSession), this.loadScene()]);
         this.xrLayer = (this.renderer.xr as any).getBaseLayer();
         this.xrLayer.fixedFoveation = 1;
-    
-        this.tvPosition = { x: 0, y: 0, z: 1 } as any;
-        if (!this.tvPosition) {
-            throw new Error('expected tvPosition');
+
+        if (!this.tv) {
+            throw new Error('expected tv object');
         }
+
+        this.moveToSeat();
 
         if (!this.video) {
             throw new Error('expected video');
         }
+
         const video = this.video;
         video.addEventListener('play', () => {
             this.isPlaying = true;
@@ -205,19 +218,25 @@ class HomeCinemaSession {
         });
         await video.play();
 
-        const tvPosition = this.tvPosition;
+        const tv = this.tv;
+
+        // hide tv placeholder to show the video playing behind it
+        tv.visible = false;
+
+        const tvPosition: Vector3 = new Vector3();
+        tv.getWorldPosition(tvPosition);
         const refSpace = this.renderer.xr.getReferenceSpace();
         const layerFactory = new XRMediaBinding(xrSession);
         const videoLayer = await layerFactory.createQuadLayer(video, {
             space: refSpace,
-            layout: 'mono',
+            layout: 'stereo-left-right',
             transform: new XRRigidTransform({
-                x: tvPosition.x - 0.355,
-                y: tvPosition.y + 1.15,
-                z: -tvPosition.z - 2.5,
-                w: 1.0,
+                x: tvPosition.x,
+                y: tvPosition.y,
+                z: tvPosition.z,
+                w: 1,
             }),
-            width: 2.35,
+            width: 1.8,
             height: 1,
         });
         xrSession.updateRenderState({
@@ -246,13 +265,25 @@ class HomeCinemaSession {
         this.controllers = null;
     }
 
+    private moveToSeat() {
+        const seat = this.scene.getObjectByName('seat_1');
+        const room  = this.room;
+        if (room && seat){
+            const x = seat.position.x;
+            const z = seat.position.z;
+            room.translateX(-x);
+            room.translateZ(-z);
+        }
+    }
+
     private async loadScene() {
         const loader = new GLTFLoader();
         const model = await loader.loadAsync('assets/home-cinema.glb');
-        this.scene.add(model.scene);
-        const tvObject = this.scene.getObjectByName('TV');
-        this.tvPosition = tvObject?.position;
-        this.seat.translateZ(-0.2);
+        this.room = model.scene;
+        this.scene.add(this.room);
+        this.tv = this.scene.getObjectByName('screen');
+        // we need to rotate the room for some weird reason
+        this.room.rotateY(Math.PI);
     }
 
     private handleControllerEvent = (evt: EventType) => {
@@ -284,6 +315,7 @@ class HomeCinemaSession {
     }
 }
 
+/*
 async function loadVideo(video: HTMLVideoElement) {
     const player = new Player(video);
     const config = {
@@ -297,6 +329,12 @@ async function loadVideo(video: HTMLVideoElement) {
 
     // DRM protected stream
     await player.load('https://storage.googleapis.com/shaka-demo-assets/sintel-widevine/dash.mpd');
+}
+*/
+
+async function loadVideo(video: HTMLVideoElement) {
+    const player = new Player(video);
+    await player.load('https://g004-vod-us-cmaf-stg-ak.cdn.peacocktv.com/pub/global/sat/3D/FrameCompatibleSBS/master_cmaf.mpd');
 }
 
 async function beforeStart() {
