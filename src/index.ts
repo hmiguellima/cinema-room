@@ -1,4 +1,4 @@
-import { HemisphereLight, PerspectiveCamera, Scene, sRGBEncoding, Vector3, XRSession, Object3D, BufferGeometry, Line } from 'three';
+import { AmbientLight, PointLight, PerspectiveCamera, Scene, sRGBEncoding, Vector3, XRSession, Object3D, BufferGeometry, Line } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory'
 import { XRHandModelFactory } from 'three/examples/jsm/webxr/XRHandModelFactory';
@@ -24,8 +24,23 @@ enum EventType {
     exit
 }
 
+type StereoLayout = 'mono' | 'stereo-left-right' | 'stereo-top-bottom';
+
+type FPS = 24 | 30;
+
+type PlayoutData = {
+    name: string;
+    streamUri: string;
+    drmUri?: string;
+    fps: FPS;
+    layout: StereoLayout;
+    default?: boolean;
+};
+
 type ControllerEventHandler = (evt: EventType) => void;
 
+const DIM_LIGHT_INTENSITY = 0.05;
+const NORMAL_LIGHT_INTENSITY = 0.7;
 class Controllers {
     private controller1: Group;
     private controller2: Group;
@@ -48,7 +63,7 @@ class Controllers {
         this.scene.add(this.controller2);
 
         const controllerModelFactory = new XRControllerModelFactory();
-        const handModelFactory = new XRHandModelFactory().setPath('./models/fbx/');
+        const handModelFactory = new XRHandModelFactory();
 
         // Hand 1
         this.controllerGrip1 = this.renderer.xr.getControllerGrip(0);
@@ -56,7 +71,7 @@ class Controllers {
         this.scene.add(this.controllerGrip1);
 
         this.hand1 = this.renderer.xr.getHand(0);
-        this.hand1.add(handModelFactory.createHandModel(this.hand1));
+        this.hand1.add(handModelFactory.createHandModel(this.hand1, 'mesh' as any));
         this.scene.add(this.hand1);
 
         // Hand 2
@@ -65,7 +80,7 @@ class Controllers {
         this.scene.add(this.controllerGrip2);
 
         this.hand2 = this.renderer.xr.getHand(1);
-        this.hand2.add(handModelFactory.createHandModel(this.hand2));
+        this.hand2.add(handModelFactory.createHandModel(this.hand2, 'mesh' as any));
         this.scene.add(this.hand2);
 
         // handle controller/hand events
@@ -158,11 +173,12 @@ class HomeCinemaSession {
     private xrLayer: any;
     private videoQualityInterval: number | undefined;
     private isPlaying = false;
-    private roomLight = new HemisphereLight(0x808080, 0x606060);
+    private ambientLight = new AmbientLight(0x101010);
+    private roomLight = new PointLight(0xffffed, NORMAL_LIGHT_INTENSITY);
     private xrSession: XRSession |  null;
     private room?: Group;
 
-    constructor(xrSession: XRSession, private video: HTMLVideoElement) {
+    constructor(xrSession: XRSession, private video: HTMLVideoElement, private stereoLayout: StereoLayout) {
         this.xrSession = xrSession;
         this.scene = new Scene();
 
@@ -174,9 +190,12 @@ class HomeCinemaSession {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.outputEncoding = sRGBEncoding;
         this.renderer.xr.enabled = true;
+        this.renderer.shadowMap.enabled = false;
         this.renderer.setAnimationLoop(this.render);
 
+        this.roomLight.position.set(0, 1.8, 0);
         this.scene.add(this.roomLight);
+        this.scene.add(this.ambientLight);
         this.controllers = new Controllers(this.renderer, this.scene, this.handleControllerEvent);
 
         window.addEventListener( 'resize', this.resize);
@@ -209,19 +228,20 @@ class HomeCinemaSession {
         video.addEventListener('play', () => {
             this.isPlaying = true;
             this.controllers?.updateInfoText('playing');
-            this.roomLight.intensity = 0.2;
+            this.roomLight.intensity = DIM_LIGHT_INTENSITY;
         });
         video.addEventListener('pause', () => {
             this.isPlaying = false;
             this.controllers?.updateInfoText('paused');
-            this.roomLight.intensity = 1;
+            this.roomLight.intensity = NORMAL_LIGHT_INTENSITY;
         });
-        await video.play();
 
         const tv = this.tv;
 
         // hide tv placeholder to show the video playing behind it
         tv.visible = false;
+
+        await video.play();
 
         const tvPosition: Vector3 = new Vector3();
         tv.getWorldPosition(tvPosition);
@@ -229,7 +249,7 @@ class HomeCinemaSession {
         const layerFactory = new XRMediaBinding(xrSession);
         const videoLayer = await layerFactory.createQuadLayer(video, {
             space: refSpace,
-            layout: 'stereo-left-right',
+            layout: this.stereoLayout,
             transform: new XRRigidTransform({
                 x: tvPosition.x,
                 y: tvPosition.y,
@@ -284,6 +304,10 @@ class HomeCinemaSession {
         this.tv = this.scene.getObjectByName('screen');
         // we need to rotate the room for some weird reason
         this.room.rotateY(Math.PI);
+
+        const avatar = await loader.loadAsync('assets/rpm-avatar-vr-1.glb');
+        avatar.scene.translateX(-0.5);
+        this.scene.add(avatar.scene);
     }
 
     private handleControllerEvent = (evt: EventType) => {
@@ -315,37 +339,37 @@ class HomeCinemaSession {
     }
 }
 
-/*
-async function loadVideo(video: HTMLVideoElement) {
-    const player = new Player(video);
-    const config = {
-        drm: {
-          servers: {
-            'com.widevine.alpha': 'https://cwip-shaka-proxy.appspot.com/no_auth',
-          },
-        },
-    };
-    player.configure(config);
+async function loadVideo() {
+    const player = new Player(videoEl);
+    const asset: PlayoutData = assets[selectEl.selectedIndex];
 
-    // DRM protected stream
-    await player.load('https://storage.googleapis.com/shaka-demo-assets/sintel-widevine/dash.mpd');
-}
-*/
-
-async function loadVideo(video: HTMLVideoElement) {
-    const player = new Player(video);
-    await player.load('https://g004-vod-us-cmaf-stg-ak.cdn.peacocktv.com/pub/global/sat/3D/FrameCompatibleSBS/master_cmaf.mpd');
+    if (asset.drmUri) {
+        player.configure({
+            drm: {
+                servers: {
+                    'com.widevine.alpha': asset.drmUri
+                }
+            }
+        });
+    }
+    await player.load(asset.streamUri);
 }
 
 async function beforeStart() {
     videoEl.pause();
-    containerEl?.removeChild(videoEl);        
+    containerEl?.removeChild(videoEl);
     await new Promise(resolve => window.setTimeout(resolve, 100));
 }
 
 function startImmersiveSession(session: XRSession) {
-    (session as any).updateTargetFrameRate(72);
-    immersiveSession = new HomeCinemaSession(session, videoEl);
+    const asset: PlayoutData = assets[selectEl.selectedIndex];
+    if (asset.fps === 24) { 
+        (session as any).updateTargetFrameRate(72);
+    } else if (asset.fps === 30) {
+        (session as any).updateTargetFrameRate(60);
+    }
+
+    immersiveSession = new HomeCinemaSession(session, videoEl, asset.layout);
     immersiveSession.run();    
     session.addEventListener('end', () => {
         window.setTimeout(() => {
@@ -356,9 +380,23 @@ function startImmersiveSession(session: XRSession) {
     })
 }
 
+function buildOptions() {
+    assets.forEach(asset => {
+        const optionEl = document.createElement('option');
+        optionEl.innerText = asset.name;
+        optionEl.selected = Boolean(asset.default);
+        selectEl.appendChild(optionEl);
+    });
+}
+
 const containerEl = document.getElementById('container');
 if (!containerEl) {
     throw new Error('invalid container element');
+}
+
+const selectEl: HTMLSelectElement = document.getElementById('assetSelect') as HTMLSelectElement;
+if (!selectEl) {
+    throw new Error('invalid assetSelect element');
 }
 
 const videoEl = document.createElement('video');
@@ -367,11 +405,53 @@ videoEl.preload = 'auto';
 videoEl.autoplay = true;
 videoEl.controls = true;
 
-containerEl.appendChild(videoEl);
+// containerEl.appendChild(videoEl);
+
+const assets: Array<PlayoutData> = [
+    {
+        name: 'Jumanji Trailer | 30fps | 1080p',
+        fps: 30,
+        streamUri: 'https://d1wkjvw8nof1jc.cloudfront.net/jumanji-trailer-1_h1080p/encoded-20-05-09-fri-jan-2018/encoded-20-05-09-fri-jan-2018.mp4',
+        layout: 'mono'
+    },
+    {
+        name: 'Big buck bunny | 3D above/bellow | 30fps | 1080p',
+        fps: 30,
+        streamUri: 'http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_30fps_stereo_abl.mp4',
+        layout: 'stereo-top-bottom'
+    },
+    {
+        name: 'Dolby Digital 5.1 demo (sound doesn\'t play) | 30fps',
+        fps: 30,
+        streamUri: 'http://media.developer.dolby.com/DDP/MP4_HPL40_30fps_channel_id_51.mp4',
+        layout: 'mono'
+    },
+    {
+        name: 'Dolby Atmos demo (sound doesn\'t play) | 30fps',
+        fps: 30,
+        streamUri: 'http://media.developer.dolby.com/Atmos/MP4/shattered-3Mb.mp4',
+        layout: 'mono'
+    },
+    {
+        name: 'Sintel Dash | 3D Side by Side | 24fps',
+        fps: 24,
+        streamUri: 'https://g004-vod-us-cmaf-stg-ak.cdn.peacocktv.com/pub/global/sat/3D/FrameCompatibleSBS/master_cmaf.mpd',
+        layout: 'stereo-left-right',
+        default: true
+    },
+    {
+        name: 'Sintel Dash Widevine | 24fps',
+        fps: 24,
+        streamUri: 'https://storage.googleapis.com/shaka-demo-assets/sintel-widevine/dash.mpd',
+        layout: 'mono',
+        drmUri: 'https://cwip-shaka-proxy.appspot.com/no_auth',
+    }
+];
 
 let immersiveSession: HomeCinemaSession | null;
 
-loadVideo(videoEl).then(() => {
+buildOptions();
+loadVideo().then(() => {
     const button = VRButton.createButton(beforeStart, startImmersiveSession);    
     document.body.appendChild(button);
 });
