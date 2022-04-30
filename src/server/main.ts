@@ -25,8 +25,9 @@ function handleDisconnect(user: User) {
     io.emit('bye', user.id);
     if (user.isHost) {
         const newHost = users[0];
+        newHost.isHost = true;
         // broadcast new host id to all sockets
-        io.emit('helloHost', newHost.id);
+        io.emit('hello', newHost);
         console.log('host disconnected', user.id, 'new host', newHost.id);
     } else {
         console.log('guest disconnected', user.id);
@@ -68,11 +69,7 @@ function setupNewUser(socket: Socket<ClientToServerEvents, ServerToClientEvents,
         socket.on('videoUpdate', handleVideoUpdate);
     
         socket.broadcast.emit('joined', user);
-        if (user.isHost) {
-            socket.emit('helloHost', user.id);
-        } else {
-            socket.emit('helloGuest', user.id);
-        }
+        socket.emit('hello', user);
 
         console.log('a user connected', user.id);
     } else {

@@ -1,8 +1,7 @@
 export interface ServerToClientEvents {
     joined: (user: User) => void;
     roomFull: () => void;
-    helloGuest: (uid: number) => void;
-    helloHost: (uid: number) => void;
+    hello: (user: User) => void;
     bye: (uid: number) => void;
     makeHost: () => void;
     userUpdate: (user: User) => void;

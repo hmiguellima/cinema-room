@@ -46,7 +46,7 @@ function buildOptions() {
 }
 
 function listenToServer() {
-    socket.on('');
+    // socket.on('helloHost',);
 }
 
 const selectEl: HTMLSelectElement = document.getElementById('assetSelect') as HTMLSelectElement;
