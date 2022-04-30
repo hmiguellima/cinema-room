@@ -84,12 +84,13 @@ const seatMap: Array<number> = [];
 
 const MAX_USERS = 2;
 const PORT = process.env.PORT || 3000;
-const INDEX = path.join(__dirname, '../dist/index.html');
+const HTML_FOLDER = '../../dist';
+const INDEX = path.join(__dirname, HTML_FOLDER, 'index.html');
 
 // define routes and socket
 const app = express();
 app.get('/', function(req, res) { res.sendFile(INDEX); });
-const staticAssetsHandler = express.static(path.join(__dirname, '../dist/'));
+const staticAssetsHandler = express.static(path.join(__dirname, HTML_FOLDER));
 app.use('/', staticAssetsHandler);
 
 const server = http.createServer(app);

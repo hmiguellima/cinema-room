@@ -9,7 +9,7 @@
     "build:prod": "webpack --mode=production --node-env=production",
     "build:server": "tsc --project tsconfig.server.json",
     "watch": "webpack --watch",
-    "start": "node dist-server/main.js"
+    "start": "node dist-server/server/main.js"
   },
   "author": "",
   "license": "ISC",
