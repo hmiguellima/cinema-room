@@ -158,9 +158,12 @@ export class HomeCinemaSession {
         // we need to rotate the room for some weird reason
         this.room.rotateY(Math.PI);
 
+        /*
+        // very un-optimized avatar
         const avatar = await loader.loadAsync('assets/rpm-avatar-vr-1.glb');
         avatar.scene.translateX(-0.5);
         this.scene.add(avatar.scene);
+        */
     }
 
     private handleControllerEvent = (evt: EventType) => {
