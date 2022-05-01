@@ -2,7 +2,7 @@ import { XRSession } from "three";
 
 export class VRButton {
 
-	static createButton(onBeforeStart: () => Promise<void>, sessionStartCallback: (session: XRSession) => void ) {
+	static async createButton(onBeforeStart: () => Promise<void>, sessionStartCallback: (session: XRSession) => void ) {
 		const button = document.createElement( 'button' );
 
 		function showEnterVR( /*device*/ ) {
@@ -124,40 +124,36 @@ export class VRButton {
 
 			stylizeElement( button );
 
-			(navigator as any).xr.isSessionSupported( 'immersive-vr' ).then( function ( supported: any ) {
+			const isSupported = await (navigator as any).xr.isSessionSupported( 'immersive-vr' ).then( function ( supported: any ) {
+				return supported;
+			});
 
-				supported ? showEnterVR() : showWebXRNotFound();
+			if (isSupported) {
+				return button;
+			}
+		}
 
-			} );
+		const message = document.createElement( 'a' );
 
-			return button;
+		if ( window.isSecureContext === false ) {
+
+			message.href = document.location.href.replace( /^http:/, 'https:' );
+			message.innerHTML = 'WEBXR NEEDS HTTPS'; // TODO Improve message
 
 		} else {
 
-			const message = document.createElement( 'a' );
-
-			if ( window.isSecureContext === false ) {
-
-				message.href = document.location.href.replace( /^http:/, 'https:' );
-				message.innerHTML = 'WEBXR NEEDS HTTPS'; // TODO Improve message
-
-			} else {
-
-				message.href = 'https://immersiveweb.dev/';
-				message.innerHTML = 'WEBXR NOT AVAILABLE';
-
-			}
-
-			message.style.left = 'calc(50% - 90px)';
-			message.style.width = '180px';
-			message.style.textDecoration = 'none';
-
-			stylizeElement( message );
-
-			return message;
+			message.href = 'https://immersiveweb.dev/';
+			message.innerHTML = 'WEBXR NOT AVAILABLE';
 
 		}
 
+		message.style.left = 'calc(50% - 90px)';
+		message.style.width = '180px';
+		message.style.textDecoration = 'none';
+
+		stylizeElement( message );
+
+		return message;
 	}
 
 }

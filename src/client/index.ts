@@ -1,16 +1,16 @@
 import { XRSession } from 'three';
 import { Player } from 'shaka-player';
 import { VRButton } from './VRButton';
-import { ClientToServerEvents, PlayoutData, ServerToClientEvents } from '../common/net-scheme';
+import { ClientToServerEvents, PlayoutData, ServerToClientEvents, User } from '../common/net-scheme';
 import { HomeCinemaSession } from './cinema-session';
 import { io, Socket } from 'socket.io-client';
 
 async function loadVideo() {
-    const player = new Player(videoEl);
+    videoPlayer = new Player(videoEl);
     const asset: PlayoutData = assets[selectEl.selectedIndex];
 
     if (asset.drmUri) {
-        player.configure({
+        videoPlayer.configure({
             drm: {
                 servers: {
                     'com.widevine.alpha': asset.drmUri
@@ -18,7 +18,8 @@ async function loadVideo() {
             }
         });
     }
-    await player.load(asset.streamUri);
+    listenToPlayerEvents();
+    await videoPlayer.load(asset.streamUri);
 }
 
 function startImmersiveSession(session: XRSession) {
@@ -34,6 +35,8 @@ function startImmersiveSession(session: XRSession) {
     session.addEventListener('end', () => {
         immersiveSession = null;
     })
+
+    // TODO: listen to state updates from immersive session and sync with server
 }
 
 function buildOptions() {
@@ -46,7 +49,25 @@ function buildOptions() {
 }
 
 function listenToServer() {
-    // socket.on('helloHost',);
+    if (!sessionStartButton) {
+        console.error('expected valid WebXR button');
+        return;
+    }
+    const button = sessionStartButton;
+    socket.on('hello', user => {
+        currentUser = user;
+        button.innerText = 'ENTER ROOM';
+        button.disabled = false;
+    });
+
+    socket.on('roomFull', () => {
+        button.innerText = 'ROOM FULL';
+    });
+}
+
+function listenToPlayerEvents() {
+    // TODO: listen to state updates from player and video element
+    // TODO: send updates to server
 }
 
 const selectEl: HTMLSelectElement = document.getElementById('assetSelect') as HTMLSelectElement;
@@ -101,18 +122,27 @@ const assets: Array<PlayoutData> = [
     }
 ];
 
-let immersiveSession: HomeCinemaSession | null;
-
-buildOptions();
-
-const button = VRButton.createButton(loadVideo, startImmersiveSession);
-if ('disabled' in button) {
-    button.innerText = 'waiting for host...';
-    button.disabled = true;
-    listenToServer();
-}
-
-document.body.appendChild(button);
+let immersiveSession: HomeCinemaSession | null = null;
+let videoPlayer: Player | null = null;
+let currentUser: User | null = null;
+let sessionStartButton: HTMLButtonElement | null;
 
 const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io();
 
+buildOptions();
+
+VRButton.createButton(loadVideo, startImmersiveSession).then(element => {
+    // we get a button only if WebXR is supported, otherwise we get an anchor
+    if ('disabled' in element) { // button
+        sessionStartButton = element;
+        sessionStartButton.innerText = 'waiting for host...';
+        sessionStartButton.disabled = true;
+        listenToServer();
+    }
+
+    document.body.appendChild(element);
+});
+
+window.addEventListener('beforeunload', () => {
+    socket.close();
+});
