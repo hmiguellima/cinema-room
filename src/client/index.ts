@@ -50,7 +50,7 @@ function buildOptions() {
 
 function listenToServer() {
     if (!sessionStartButton) {
-        console.error('expected valid WebXR button');
+        console.warn('expected valid WebXR button');
         return;
     }
     const button = sessionStartButton;
@@ -135,8 +135,6 @@ VRButton.createButton(loadVideo, startImmersiveSession).then(element => {
     // we get a button only if WebXR is supported, otherwise we get an anchor
     if ('disabled' in element) { // button
         sessionStartButton = element;
-        sessionStartButton.innerText = 'waiting for host...';
-        sessionStartButton.disabled = true;
         listenToServer();
     }
 
