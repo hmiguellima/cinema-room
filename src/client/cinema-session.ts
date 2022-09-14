@@ -174,6 +174,7 @@ export class HomeCinemaSession {
 
         // LED strip creation
         if (this.ledSetup && this.tv) {
+            /*
             const hideStuff = ['screen_wall', 'screen', 'room'];
             hideStuff.forEach(name => {
                 let o = this.scene.getObjectByName(name);
@@ -181,6 +182,7 @@ export class HomeCinemaSession {
                     o.visible = false;
                 }    
             });
+            */
 
             const bb = new Box3().setFromObject(this.tv);
             const xSize = bb.max.x - bb.min.x;
@@ -191,42 +193,38 @@ export class HomeCinemaSession {
             // Top & Bottom LEDs
             for (let x = 0; x < this.ledSetup.hCount; x++) {
                 for (let y = 0; y < 2; y++) {
-                    // let light = new PointLight(0xffffed, 0);
-                    let light = new Mesh(boxGeo, boxMat);
+                    let light = new PointLight(0xffffed);
+                    // let light = new Mesh(boxGeo, boxMat);
 
                     this.scene.add(light);
                     light.position.setX(bb.min.x + x * (xSize / this.ledSetup.hCount));
                     light.position.setY(y === 0 ? bb.min.y : bb.max.y);
                     light.position.setZ(-bb.max.z);
 
-                    /*
                     if (y === 0) {
                         this.topLeds.push(light);
                     } else {
                         this.bottomLeds.push(light);
                     }
-                    */
                 }
             }
 
             // Left & Right LEDs
             for (let y = 0; y < this.ledSetup.vCount; y++) {
                 for (let x = 0; x < 2; x++) {
-                    // let light = new PointLight(0xffffed, 0);
-                    let light = new Mesh(boxGeo, boxMat);
+                    let light = new PointLight(0xffffed);
+                    // let light = new Mesh(boxGeo, boxMat);
 
                     this.scene.add(light);
                     light.position.setY(bb.min.y + y * (ySize / this.ledSetup.vCount));
                     light.position.setX(x === 0 ? bb.min.x : bb.max.x);
                     light.position.setZ(-bb.max.z);
 
-                    /*
                     if (x == 0) {
                         this.leftLeds.push(light);
                     } else {
                         this.rightLeds.push(light);
                     }
-                    */
                 }
             }
         }
