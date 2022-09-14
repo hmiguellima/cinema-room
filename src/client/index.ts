@@ -25,14 +25,14 @@ async function loadVideo() {
 
 function startImmersiveSession(session: XRSession) {
     const asset: PlayoutData = assets[selectEl.selectedIndex];
-    if (asset.fps === 24) { 
+    if (asset.fps === 24) {
         (session as any).updateTargetFrameRate(72);
     } else if (asset.fps === 30) {
         (session as any).updateTargetFrameRate(60);
     }
 
     immersiveSession = new HomeCinemaSession(session, videoEl, asset.layout);
-    immersiveSession.run();    
+    immersiveSession.run();
     session.addEventListener('end', () => {
         immersiveSession = null;
     })
@@ -87,13 +87,16 @@ playButton.onclick = async() => {
 
    
    console.log(result);
+selectEl.onchange = () => {
+    loadVideo();
 };
 
-document.querySelector('#shakaDomContainer')?.append(playButton);
+const videoEl = document.createElement('video');
+
 document.querySelector('#shakaDomContainer')?.append(videoEl);
 videoEl.crossOrigin = 'anonymous';
 videoEl.preload = 'auto';
-videoEl.autoplay = true;
+videoEl.autoplay = false;
 videoEl.controls = true;
 
 const assets: Array<PlayoutData> = [
@@ -126,7 +129,6 @@ const assets: Array<PlayoutData> = [
         fps: 24,
         streamUri: 'https://g004-vod-us-cmaf-stg-ak.cdn.peacocktv.com/pub/global/sat/3D/FrameCompatibleSBS/master_cmaf.mpd',
         layout: 'stereo-left-right',
-        default: true
     },
     {
         name: 'Sintel Dash Widevine | 24fps',
@@ -134,6 +136,13 @@ const assets: Array<PlayoutData> = [
         streamUri: 'https://storage.googleapis.com/shaka-demo-assets/sintel-widevine/dash.mpd',
         layout: 'mono',
         drmUri: 'https://cwip-shaka-proxy.appspot.com/no_auth',
+    },
+    {
+        name: 'BBB with Thumbs',
+        fps: 30,
+        streamUri: 'https://dash.akamaized.net/akamai/bbb_30fps/bbb_with_multiple_tiled_thumbnails.mpd',
+        layout: 'mono',
+        default: true
     }
 ];
 
@@ -146,6 +155,7 @@ const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io();
 
 buildOptions();
 
+loadVideo();
 VRButton.createButton(loadVideo, startImmersiveSession).then(element => {
     // we get a button only if WebXR is supported, otherwise we get an anchor
     if ('disabled' in element) { // button
