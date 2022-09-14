@@ -151,7 +151,9 @@ VRButton.createButton(loadVideo, startImmersiveSession).then(element => {
     // we get a button only if WebXR is supported, otherwise we get an anchor
     if ('disabled' in element) { // button
         sessionStartButton = element;
-        listenToServer();
+        // listenToServer();
+        sessionStartButton.innerText = 'ENTER ROOM';
+        sessionStartButton.disabled = false;
     }
 
     document.body.appendChild(element);
