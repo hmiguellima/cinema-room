@@ -108,7 +108,8 @@ async function handleTimeUpdate(event: any) {
             startTime: thumbnail!.startTime,
             uris: thumbnail!.uris,
         }
-        getBrightnessRegions(shakaThumbnail).then((e) => {
+        getBrightnessRegions(shakaThumbnail).then((e: any) => {
+            immersiveSession?.updateLedStrips(e);
             console.log(e);
         });
         console.log('-- thumbnail -- 2');

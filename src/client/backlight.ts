@@ -13,13 +13,13 @@ export interface ShakaThumbnail {
 };
 
 const config = {
-    gridWidth: 12,
-    gridHeight: 12,
+    gridWidth: 2,
+    gridHeight: 2,
     pixelDepthFromEdge: 3,
 };
 
 export function getBrightnessRegions(thumbnail: ShakaThumbnail) {
-    return new Promise((resolove) => {
+    return new Promise((resolve) => {
 
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -133,7 +133,7 @@ export function getBrightnessRegions(thumbnail: ShakaThumbnail) {
             left.push(l);
             cursor += gridElementPixelHeight;
         }
-        resolove([top, bottom, left, right]);
+        resolve({top, bottom, left, right});
     });
 
 })
