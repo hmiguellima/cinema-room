@@ -4,6 +4,7 @@ import { VRButton } from './VRButton';
 import { ClientToServerEvents, PlayoutData, ServerToClientEvents, User } from '../common/net-scheme';
 import { HomeCinemaSession } from './cinema-session';
 import { io, Socket } from 'socket.io-client';
+import { getBrightnessRegions } from './backlight';
 
 async function loadVideo() {
     videoPlayer = new Player(videoEl);
@@ -80,8 +81,12 @@ const playButton = document.createElement('button');
 const videoEl = document.createElement('video');
 
 playButton.innerText = 'Play Asset';
-playButton.onclick = () => {
-    loadVideo();
+playButton.onclick = async() => {
+    //loadVideo();
+   const result = await getBrightnessRegions();
+
+   
+   console.log(result);
 };
 
 document.querySelector('#shakaDomContainer')?.append(playButton);
