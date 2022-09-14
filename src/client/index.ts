@@ -89,6 +89,7 @@ selectEl.onchange = () => {
     loadVideo();
 };
 
+document.querySelector('#container')?.append(playButton);
 document.querySelector('#shakaDomContainer')?.append(videoEl);
 videoEl.crossOrigin = 'anonymous';
 videoEl.preload = 'auto';
