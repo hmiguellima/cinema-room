@@ -54,8 +54,13 @@ function startImmersiveSession(session: XRSession) {
         (session as any).updateTargetFrameRate(60);
     }
 
+<<<<<<< HEAD
     immersiveSession = new HomeCinemaSession(session, videoEl, asset.layout);
     immersiveSession.run();
+=======
+    immersiveSession = new HomeCinemaSession(session, videoEl, asset.layout, { hCount: 10, vCount: 5 });
+    immersiveSession.run();    
+>>>>>>> 94f5ea0 (Add dummy lights objects)
     session.addEventListener('end', () => {
         immersiveSession = null;
     })
