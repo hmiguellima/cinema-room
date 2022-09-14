@@ -22,6 +22,13 @@ export type LedSetup = {
     vCount: number;
 }
 
+export type LedBrigthness = {
+    top: Array<number>;
+    bottom: Array<number>;
+    left: Array<number>;
+    right: Array<number>;
+}
+
 export class HomeCinemaSession {
     private scene: Scene;
     private camera: PerspectiveCamera;
@@ -145,6 +152,19 @@ export class HomeCinemaSession {
         }, 1000);
     }
 
+    public updateLedStrips(brigthness: LedBrigthness) {
+        if (this.ledSetup) {
+            for (let x = 0; x < this.ledSetup.hCount; x++) {
+                this.topLeds[x].intensity = brigthness.top[x];
+                this.bottomLeds[x].intensity = brigthness.bottom[x];
+            }
+            for (let y = 0; y < this.ledSetup.vCount; y++) {
+                this.leftLeds[y].intensity = brigthness.left[y];
+                this.rightLeds[y].intensity = brigthness.right[y];
+            }
+        }
+    }
+
     private destroy() {
         window.clearInterval(this.videoQualityInterval);
         window.removeEventListener( 'resize', this.resize);
@@ -193,7 +213,7 @@ export class HomeCinemaSession {
             // Top & Bottom LEDs
             for (let x = 0; x < this.ledSetup.hCount; x++) {
                 for (let y = 0; y < 2; y++) {
-                    let light = new PointLight(0xffffed);
+                    let light = new PointLight(0xffffed, 0);
                     // let light = new Mesh(boxGeo, boxMat);
 
                     this.scene.add(light);
@@ -212,7 +232,7 @@ export class HomeCinemaSession {
             // Left & Right LEDs
             for (let y = 0; y < this.ledSetup.vCount; y++) {
                 for (let x = 0; x < 2; x++) {
-                    let light = new PointLight(0xffffed);
+                    let light = new PointLight(0xffffed, 0);
                     // let light = new Mesh(boxGeo, boxMat);
 
                     this.scene.add(light);
