@@ -25,6 +25,8 @@ export function getBrightnessRegions(thumbnail: ShakaThumbnail) {
     img.crossOrigin = "anonymous";
     img.src = thumbnail.uris[0];
     const canvas = document.createElement('canvas');
+    canvas.height = thumbnail.positionY + thumbnail.imageHeight;
+    canvas.width = thumbnail.positionX + thumbnail.imageWidth;
     const ctx = canvas.getContext("2d");
     img.addEventListener("load", () => {
         img.style.display = "none";
@@ -39,6 +41,7 @@ export function getBrightnessRegions(thumbnail: ShakaThumbnail) {
         let cursor = thumbnail.positionX;
         while(cursor < thumbnail.positionX+thumbnail.imageWidth) {
             const pixel = ctx!.getImageData(cursor, thumbnail.positionY, 1, config.pixelDepthFromEdge);
+            console.log(cursor, thumbnail.positionY, 1, config.pixelDepthFromEdge, pixel);
             let rBucket: number = 0;
             let gBucket: number = 0;
             let bBucket: number = 0;
