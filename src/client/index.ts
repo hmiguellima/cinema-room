@@ -121,7 +121,6 @@ const assets: Array<PlayoutData> = [
         fps: 24,
         streamUri: 'https://g004-vod-us-cmaf-stg-ak.cdn.peacocktv.com/pub/global/sat/3D/FrameCompatibleSBS/master_cmaf.mpd',
         layout: 'stereo-left-right',
-        default: true
     },
     {
         name: 'Sintel Dash Widevine | 24fps',
@@ -129,6 +128,13 @@ const assets: Array<PlayoutData> = [
         streamUri: 'https://storage.googleapis.com/shaka-demo-assets/sintel-widevine/dash.mpd',
         layout: 'mono',
         drmUri: 'https://cwip-shaka-proxy.appspot.com/no_auth',
+    },
+    {
+        name: 'BBB with Thumbs',
+        fps: 30,
+        streamUri: 'https://dash.akamaized.net/akamai/bbb_30fps/bbb_with_multiple_tiled_thumbnails.mpd',
+        layout: 'mono',
+        default: true
     }
 ];
 
