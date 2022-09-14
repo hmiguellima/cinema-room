@@ -4,7 +4,7 @@ import { VRButton } from './VRButton';
 import { ClientToServerEvents, PlayoutData, ServerToClientEvents, User } from '../common/net-scheme';
 import { HomeCinemaSession } from './cinema-session';
 import { io, Socket } from 'socket.io-client';
-import { getBrightnessRegions } from './backlight';
+import { getBrightnessRegions, ShakaThumbnail } from './backlight';
 
 async function loadVideo() {
     videoPlayer = new Player(videoEl);
@@ -21,6 +21,29 @@ async function loadVideo() {
     }
     listenToPlayerEvents();
     await videoPlayer.load(asset.streamUri);
+}
+
+function getThumbnailImageTrack () {
+    const imageTracks = videoPlayer?.getImageTracks();
+    if (imageTracks && imageTracks.length) {
+        const mimeTypesPreference = [
+            'image/jpeg',
+            'image/png',
+            'image/svg+xml',
+        ];
+        for (const mimeType of mimeTypesPreference) {
+            const estimatedBandwidth = videoPlayer?.getStats().estimatedBandwidth;
+            if(estimatedBandwidth){
+                const bestOptions = (imageTracks).filter((track) => {
+                    return track.mimeType?.toLowerCase() === mimeType && track.bandwidth < estimatedBandwidth * 0.01;
+                });
+                if (bestOptions && bestOptions.length) {
+                    return bestOptions[0];
+                }
+            }
+        }
+        return imageTracks[0];
+    }
 }
 
 function startImmersiveSession(session: XRSession) {
@@ -66,9 +89,41 @@ function listenToServer() {
     });
 }
 
-function listenToPlayerEvents() {
-    // TODO: listen to state updates from player and video element
-    // TODO: send updates to server
+async function handleTimeUpdate(event: any) {
+    const imageTrack = getThumbnailImageTrack();
+    const thumbnail = await videoPlayer?.getThumbnails(imageTrack?.id || 0, event.path[0].currentTime);
+    const newPos = {
+        posX: thumbnail!.positionX,
+        posY: thumbnail!.positionY,
+    }
+    if (lastPos.posX != newPos.posX || lastPos.posY != newPos.posY) {
+        lastPos = newPos;
+        const shakaThumbnail: ShakaThumbnail = {
+            imageHeight: thumbnail!.height,
+            imageWidth: thumbnail!.width,
+            duration: thumbnail!.duration,
+            positionX: thumbnail!.positionX,
+            positionY: thumbnail!.positionY,
+            startTime: thumbnail!.startTime,
+            uris: thumbnail!.uris,
+        }
+        getBrightnessRegions(shakaThumbnail).then((e) => {
+            console.log(e);
+        });
+        console.log('-- thumbnail -- 2');
+        console.log(shakaThumbnail);
+    }
+}
+
+let lastPos = {
+    posX: -1,
+    posY: -1,
+};
+
+async function listenToPlayerEvents() {
+    console.log('videoPlayer ----------');
+    console.log(videoPlayer);
+    document.getElementsByTagName('video')[0]?.addEventListener('timeupdate', async (event: any) => { handleTimeUpdate(event) });
 }
 
 const selectEl: HTMLSelectElement = document.getElementById('assetSelect') as HTMLSelectElement;
@@ -99,11 +154,10 @@ selectEl.onchange = () => {
     loadVideo();
 };
 
-document.querySelector('#container')?.append(playButton);
 document.querySelector('#shakaDomContainer')?.append(videoEl);
 videoEl.crossOrigin = 'anonymous';
 videoEl.preload = 'auto';
-videoEl.autoplay = false;
+videoEl.autoplay = true;
 videoEl.controls = true;
 
 const assets: Array<PlayoutData> = [

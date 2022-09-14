@@ -1,15 +1,15 @@
 import { rgbToHsl } from './utils';
 
- interface ShakaThumbnail {
+export interface ShakaThumbnail {
     imageHeight: number,
     imageWidth: number,
-    height: number,
+    height?: number,
     positionX: number,
     positionY: number,
     startTime: number,
     duration: number,
     uris: Array<string>,
-    width: number,
+    width?: number,
 };
 
 const config = {
@@ -20,7 +20,7 @@ const config = {
 
 export function getBrightnessRegions(thumbnail: ShakaThumbnail) {
     return new Promise((resolove) => {
-    
+
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.src = thumbnail.uris[0];
@@ -60,9 +60,9 @@ export function getBrightnessRegions(thumbnail: ShakaThumbnail) {
         cursor = thumbnail.positionX;
         while(cursor < thumbnail.positionX+thumbnail.imageWidth) {
             const pixel = ctx!.getImageData(
-                cursor, 
-                (thumbnail.positionY+thumbnail.imageHeight), 
-                1, 
+                cursor,
+                (thumbnail.positionY+thumbnail.imageHeight),
+                1,
                 -config.pixelDepthFromEdge);
             let rBucket: number = 0;
             let gBucket: number = 0;
@@ -85,9 +85,9 @@ export function getBrightnessRegions(thumbnail: ShakaThumbnail) {
         cursor = thumbnail.positionY;
         while(cursor < thumbnail.positionY+thumbnail.imageHeight) {
             const pixel = ctx!.getImageData(
-                thumbnail.positionX+thumbnail.imageWidth, 
-                cursor, 
-                -config.pixelDepthFromEdge, 
+                thumbnail.positionX+thumbnail.imageWidth,
+                cursor,
+                -config.pixelDepthFromEdge,
                 1);
             let rBucket: number = 0;
             let gBucket: number = 0;
@@ -110,9 +110,9 @@ export function getBrightnessRegions(thumbnail: ShakaThumbnail) {
         cursor = thumbnail.positionY;
         while(cursor < thumbnail.positionY+thumbnail.imageHeight) {
             const pixel = ctx!.getImageData(
-                thumbnail.positionX, 
+                thumbnail.positionX,
                 cursor,
-                config.pixelDepthFromEdge, 
+                config.pixelDepthFromEdge,
                 1);
             let rBucket: number = 0;
             let gBucket: number = 0;
