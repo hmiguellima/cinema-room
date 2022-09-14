@@ -75,7 +75,17 @@ if (!selectEl) {
     throw new Error('invalid assetSelect element');
 }
 
+
+const playButton = document.createElement('button');
 const videoEl = document.createElement('video');
+
+playButton.innerText = 'Play Asset';
+playButton.onclick = () => {
+    loadVideo();
+};
+
+document.querySelector('#shakaDomContainer')?.append(playButton);
+document.querySelector('#shakaDomContainer')?.append(videoEl);
 videoEl.crossOrigin = 'anonymous';
 videoEl.preload = 'auto';
 videoEl.autoplay = true;
