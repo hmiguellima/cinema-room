@@ -82,7 +82,17 @@ const videoEl = document.createElement('video');
 
 playButton.innerText = 'get backlight';
 playButton.onclick = async() => {
-   const result = await getBrightnessRegions();
+   const result = await getBrightnessRegions({
+    imageHeight: 58,
+    imageWidth: 102,
+    height: 1152,
+    positionX: 0,
+    positionY: 0,
+    startTime: 1,
+    duration: 1,
+    uris: ['https://dash.akamaized.net/akamai/bbb_30fps/thumbnails_256x144/tile_1.jpg'],
+    width: 1024,
+});
    console.log(result);
 };
 selectEl.onchange = () => {

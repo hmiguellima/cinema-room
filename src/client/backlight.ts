@@ -1,29 +1,29 @@
 import { rgbToHsl } from './utils';
 
-const shakaThumbnail = {
-    imageHeight: 58,
-    imageWidth: 102,
-    height: 1152,
-    positionX: 0,
-    positionY: 0,
-    startTime: 1,
-    duration: 1,
-    uris: ['https://dash.akamaized.net/akamai/bbb_30fps/thumbnails_256x144/tile_1.jpg'],
-    width: 1024,
+ interface ShakaThumbnail {
+    imageHeight: number,
+    imageWidth: number,
+    height: number,
+    positionX: number,
+    positionY: number,
+    startTime: number,
+    duration: number,
+    uris: Array<string>,
+    width: number,
 };
+
 const config = {
-    thumbnail: shakaThumbnail,
     gridWidth: 12,
     gridHeight: 12,
     pixelDepthFromEdge: 3,
 };
 
-export function getBrightnessRegions() {
+export function getBrightnessRegions(thumbnail: ShakaThumbnail) {
     return new Promise((resolove) => {
     
     const img = new Image();
     img.crossOrigin = "anonymous";
-    img.src = config.thumbnail.uris[0];
+    img.src = thumbnail.uris[0];
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext("2d");
     img.addEventListener("load", () => {
@@ -31,14 +31,14 @@ export function getBrightnessRegions() {
         ctx!.drawImage(img, 0, 0);
         console.log('image loaded');
 
-        const gridElementPixelHeight = Math.ceil(config.thumbnail.imageHeight / config.gridHeight);
-        const gridElementPixelWidth = Math.ceil(config.thumbnail.imageWidth / config.gridWidth);
+        const gridElementPixelHeight = Math.ceil(thumbnail.imageHeight / config.gridHeight);
+        const gridElementPixelWidth = Math.ceil(thumbnail.imageWidth / config.gridWidth);
 
         //top
         const top: Array<number> = [];
-        let cursor = config.thumbnail.positionX;
-        while(cursor < config.thumbnail.positionX+config.thumbnail.imageWidth) {
-            const pixel = ctx!.getImageData(cursor, config.thumbnail.positionY, 1, config.pixelDepthFromEdge);
+        let cursor = thumbnail.positionX;
+        while(cursor < thumbnail.positionX+thumbnail.imageWidth) {
+            const pixel = ctx!.getImageData(cursor, thumbnail.positionY, 1, config.pixelDepthFromEdge);
             let rBucket: number = 0;
             let gBucket: number = 0;
             let bBucket: number = 0;
@@ -57,11 +57,11 @@ export function getBrightnessRegions() {
         }
         //bottom
         const bottom: Array<number> = [];
-        cursor = config.thumbnail.positionX;
-        while(cursor < config.thumbnail.positionX+config.thumbnail.imageWidth) {
+        cursor = thumbnail.positionX;
+        while(cursor < thumbnail.positionX+thumbnail.imageWidth) {
             const pixel = ctx!.getImageData(
                 cursor, 
-                (config.thumbnail.positionY+config.thumbnail.imageHeight), 
+                (thumbnail.positionY+thumbnail.imageHeight), 
                 1, 
                 -config.pixelDepthFromEdge);
             let rBucket: number = 0;
@@ -82,10 +82,10 @@ export function getBrightnessRegions() {
         }
         //right
         const right: Array<number> = [];
-        cursor = config.thumbnail.positionY;
-        while(cursor < config.thumbnail.positionY+config.thumbnail.imageHeight) {
+        cursor = thumbnail.positionY;
+        while(cursor < thumbnail.positionY+thumbnail.imageHeight) {
             const pixel = ctx!.getImageData(
-                config.thumbnail.positionX+config.thumbnail.imageWidth, 
+                thumbnail.positionX+thumbnail.imageWidth, 
                 cursor, 
                 -config.pixelDepthFromEdge, 
                 1);
@@ -107,10 +107,10 @@ export function getBrightnessRegions() {
         }
         //left
         const left: Array<number> = [];
-        cursor = config.thumbnail.positionY;
-        while(cursor < config.thumbnail.positionY+config.thumbnail.imageHeight) {
+        cursor = thumbnail.positionY;
+        while(cursor < thumbnail.positionY+thumbnail.imageHeight) {
             const pixel = ctx!.getImageData(
-                config.thumbnail.positionX, 
+                thumbnail.positionX, 
                 cursor,
                 config.pixelDepthFromEdge, 
                 1);
