@@ -80,18 +80,14 @@ if (!selectEl) {
 const playButton = document.createElement('button');
 const videoEl = document.createElement('video');
 
-playButton.innerText = 'Play Asset';
+playButton.innerText = 'get backlight';
 playButton.onclick = async() => {
-    //loadVideo();
    const result = await getBrightnessRegions();
-
-   
    console.log(result);
+};
 selectEl.onchange = () => {
     loadVideo();
 };
-
-const videoEl = document.createElement('video');
 
 document.querySelector('#shakaDomContainer')?.append(videoEl);
 videoEl.crossOrigin = 'anonymous';
