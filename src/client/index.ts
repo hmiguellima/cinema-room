@@ -24,14 +24,14 @@ async function loadVideo() {
 
 function startImmersiveSession(session: XRSession) {
     const asset: PlayoutData = assets[selectEl.selectedIndex];
-    if (asset.fps === 24) { 
+    if (asset.fps === 24) {
         (session as any).updateTargetFrameRate(72);
     } else if (asset.fps === 30) {
         (session as any).updateTargetFrameRate(60);
     }
 
     immersiveSession = new HomeCinemaSession(session, videoEl, asset.layout);
-    immersiveSession.run();    
+    immersiveSession.run();
     session.addEventListener('end', () => {
         immersiveSession = null;
     })
@@ -75,20 +75,16 @@ if (!selectEl) {
     throw new Error('invalid assetSelect element');
 }
 
-
-const playButton = document.createElement('button');
-const videoEl = document.createElement('video');
-
-playButton.innerText = 'Play Asset';
-playButton.onclick = () => {
+selectEl.onchange = () => {
     loadVideo();
 };
 
-document.querySelector('#shakaDomContainer')?.append(playButton);
+const videoEl = document.createElement('video');
+
 document.querySelector('#shakaDomContainer')?.append(videoEl);
 videoEl.crossOrigin = 'anonymous';
 videoEl.preload = 'auto';
-videoEl.autoplay = true;
+videoEl.autoplay = false;
 videoEl.controls = true;
 
 const assets: Array<PlayoutData> = [
@@ -141,6 +137,7 @@ const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io();
 
 buildOptions();
 
+loadVideo();
 VRButton.createButton(loadVideo, startImmersiveSession).then(element => {
     // we get a button only if WebXR is supported, otherwise we get an anchor
     if ('disabled' in element) { // button
