@@ -73,7 +73,7 @@ function setupNewUser(socket: Socket<ClientToServerEvents, ServerToClientEvents,
 
         console.log('a user connected', user.id);
     } else {
-        socket.emit('roomFull');
+        // socket.emit('roomFull');
     }
 }
 
