@@ -174,6 +174,14 @@ export class HomeCinemaSession {
 
         // LED strip creation
         if (this.ledSetup && this.tv) {
+            const hideStuff = ['screen_wall', 'screen', 'room'];
+            hideStuff.forEach(name => {
+                let o = this.scene.getObjectByName(name);
+                if (o) {
+                    o.visible = false;
+                }    
+            });
+
             const bb = new Box3().setFromObject(this.tv);
             const xSize = bb.max.x - bb.min.x;
             const ySize = bb.max.y - bb.min.y;
