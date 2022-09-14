@@ -153,14 +153,15 @@ export class HomeCinemaSession {
     }
 
     public updateLedStrips(brigthness: LedBrigthness) {
+        // stuff
         if (this.ledSetup) {
             for (let x = 0; x < this.ledSetup.hCount; x++) {
-                this.topLeds[x].intensity = brigthness.top[x];
-                this.bottomLeds[x].intensity = brigthness.bottom[x];
+                this.topLeds[x].intensity = brigthness.top[x] / 100;
+                this.bottomLeds[x].intensity = brigthness.bottom[x] / 100;
             }
             for (let y = 0; y < this.ledSetup.vCount; y++) {
-                this.leftLeds[y].intensity = brigthness.left[y];
-                this.rightLeds[y].intensity = brigthness.right[y];
+                this.leftLeds[y].intensity = brigthness.left[y] / 100;
+                this.rightLeds[y].intensity = brigthness.right[y] / 100;
             }
         }
     }
