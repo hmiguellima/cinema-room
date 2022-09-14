@@ -30,7 +30,7 @@ function startImmersiveSession(session: XRSession) {
         (session as any).updateTargetFrameRate(60);
     }
 
-    immersiveSession = new HomeCinemaSession(session, videoEl, asset.layout);
+    immersiveSession = new HomeCinemaSession(session, videoEl, asset.layout, { hCount: 10, vCount: 5 });
     immersiveSession.run();    
     session.addEventListener('end', () => {
         immersiveSession = null;

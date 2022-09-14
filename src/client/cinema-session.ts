@@ -1,4 +1,4 @@
-import { Scene, PerspectiveCamera, WebGLRenderer, Object3D, AmbientLight, PointLight, XRSession, Group, sRGBEncoding, Vector3 } from "three";
+import { Scene, PerspectiveCamera, WebGLRenderer, Object3D, AmbientLight, PointLight, XRSession, Group, sRGBEncoding, Vector3, Box3, BoxGeometry, MeshBasicMaterial, Mesh } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { StereoLayout } from "../common/net-scheme";
 import { Controllers, EventType } from "./controllers";
@@ -17,6 +17,11 @@ declare global {
     }
 }
 
+export type LedSetup = {
+    hCount: number;
+    vCount: number;
+}
+
 export class HomeCinemaSession {
     private scene: Scene;
     private camera: PerspectiveCamera;
@@ -30,8 +35,17 @@ export class HomeCinemaSession {
     private roomLight = new PointLight(0xffffed, NORMAL_LIGHT_INTENSITY);
     private xrSession: XRSession |  null;
     private room?: Group;
+    private topLeds: Array<PointLight>;
+    private bottomLeds: Array<PointLight>;
+    private leftLeds: Array<PointLight>;
+    private rightLeds: Array<PointLight>;
 
-    constructor(xrSession: XRSession, private video: HTMLVideoElement, private stereoLayout: StereoLayout) {
+    constructor(xrSession: XRSession, private video: HTMLVideoElement, private stereoLayout: StereoLayout, private ledSetup?: LedSetup) {
+        this.topLeds = [];
+        this.bottomLeds = [];
+        this.leftLeds = [];
+        this.rightLeds = [];
+
         this.xrSession = xrSession;
         this.scene = new Scene();
 
@@ -157,6 +171,57 @@ export class HomeCinemaSession {
         this.tv = this.scene.getObjectByName('screen');
         // we need to rotate the room for some weird reason
         this.room.rotateY(Math.PI);
+
+        // LED strip creation
+        if (this.ledSetup && this.tv) {
+            const bb = new Box3().setFromObject(this.tv);
+            const xSize = bb.max.x - bb.min.x;
+            const ySize = bb.max.y - bb.min.y;
+            const boxGeo = new BoxGeometry(0.01, 0.01, 0.01);
+            const boxMat = new MeshBasicMaterial( {color: 0x00ff00} );
+
+            // Top & Bottom LEDs
+            for (let x = 0; x < this.ledSetup.hCount; x++) {
+                for (let y = 0; y < 2; y++) {
+                    // let light = new PointLight(0xffffed, 0);
+                    let light = new Mesh(boxGeo, boxMat);
+
+                    this.scene.add(light);
+                    light.position.setX(bb.min.x + x * (xSize / this.ledSetup.hCount));
+                    light.position.setY(y === 0 ? bb.min.y : bb.max.y);
+                    light.position.setZ(bb.max.z);
+
+                    /*
+                    if (y === 0) {
+                        this.topLeds.push(light);
+                    } else {
+                        this.bottomLeds.push(light);
+                    }
+                    */
+                }
+            }
+
+            // Left & Right LEDs
+            for (let y = 0; y < this.ledSetup.vCount; y++) {
+                for (let x = 0; x < 2; x++) {
+                    // let light = new PointLight(0xffffed, 0);
+                    let light = new Mesh(boxGeo, boxMat);
+
+                    this.scene.add(light);
+                    light.position.setY(bb.min.y + y * (ySize / this.ledSetup.vCount));
+                    light.position.setX(x === 0 ? bb.min.x : bb.max.x);
+                    light.position.setZ(bb.max.z);
+
+                    /*
+                    if (x == 0) {
+                        this.leftLeds.push(light);
+                    } else {
+                        this.rightLeds.push(light);
+                    }
+                    */
+                }
+            }
+        }
 
         /*
         // very un-optimized avatar
