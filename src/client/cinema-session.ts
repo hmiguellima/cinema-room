@@ -197,7 +197,7 @@ export class HomeCinemaSession {
                     this.scene.add(light);
                     light.position.setX(bb.min.x + x * (xSize / this.ledSetup.hCount));
                     light.position.setY(y === 0 ? bb.min.y : bb.max.y);
-                    light.position.setZ(bb.max.z);
+                    light.position.setZ(-bb.max.z);
 
                     /*
                     if (y === 0) {
@@ -218,7 +218,7 @@ export class HomeCinemaSession {
                     this.scene.add(light);
                     light.position.setY(bb.min.y + y * (ySize / this.ledSetup.vCount));
                     light.position.setX(x === 0 ? bb.min.x : bb.max.x);
-                    light.position.setZ(bb.max.z);
+                    light.position.setZ(-bb.max.z);
 
                     /*
                     if (x == 0) {
