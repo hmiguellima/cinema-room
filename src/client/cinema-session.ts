@@ -6,17 +6,6 @@ import { Controllers, EventType } from "./controllers";
 const DIM_LIGHT_INTENSITY = 0.05;
 const NORMAL_LIGHT_INTENSITY = 0.7;
 
-declare global {
-    class XRMediaBinding {
-        constructor(session: XRSession | null);
-        createQuadLayer(el: HTMLVideoElement, init: any): Promise<any>;
-    }
-
-    class XRRigidTransform {
-        constructor(init: any);
-    }
-}
-
 export class HomeCinemaSession {
     private scene: Scene;
     private camera: PerspectiveCamera;
@@ -99,9 +88,9 @@ export class HomeCinemaSession {
         const tvPosition: Vector3 = new Vector3();
         tv.getWorldPosition(tvPosition);
         const refSpace = this.renderer.xr.getReferenceSpace();
-        const layerFactory = new XRMediaBinding(xrSession);
+        const layerFactory = new XRMediaBinding(xrSession as any);
         const videoLayer = await layerFactory.createQuadLayer(video, {
-            space: refSpace,
+            space: refSpace!,
             layout: this.stereoLayout,
             transform: new XRRigidTransform({
                 x: tvPosition.x,

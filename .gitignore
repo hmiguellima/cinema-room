@@ -3,4 +3,4 @@ dist-server
 dist
 *.key
 *.pem
-
+.DS_Store
