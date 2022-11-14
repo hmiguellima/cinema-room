@@ -5,7 +5,7 @@ const isProduction = process.env.NODE_ENV == 'production';
 const stylesHandler = 'style-loader';
 
 const config = {
-  entry: './src/client/index.ts',
+  entry: './src/ar-scene/index.ts',
   output: {
     filename: 'app-[fullhash].js',
     path: path.resolve(__dirname, 'dist'),

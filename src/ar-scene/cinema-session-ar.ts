@@ -5,7 +5,7 @@ import { ControllersAR } from "./controllers-ar";
 import { PlanesManager } from "./planes-manager";
 import { VideoPlayer } from "./videoplayer";
 
-export class AnchorsPlanesHitVideoScene {
+export class CinemaSessionAR {
     private renderer: any;
     private scene?: Scene;
     private camera?: Camera;
