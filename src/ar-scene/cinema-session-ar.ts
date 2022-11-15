@@ -207,19 +207,19 @@ export class CinemaSessionAR {
             // const controllerPosition = controller.position;
 
             // Create an anchor in the wall.
-            const controllerPosition = this.raycastingManager?.getLatestVerticalHit();
+            const anchorPosition = this.raycastingManager?.getLatestVerticalHitCenter();
 
-            const controllerRotation = new Quaternion().setFromEuler( controller.rotation );
+            // const controllerRotation = new Quaternion().setFromEuler( controller.rotation );
+            const anchorRotation = new Quaternion().setFromEuler( this.raycastingManager?.getLatestVerticalHitObject()?.rotation! );
 
             const anchorsId = 'webxr_ar_anchors_handles';
             const val = localStorage.getItem( anchorsId );
             const persistentHandles = JSON.parse( val! ) || [];
 
-            console.log('**** persistentHandles:', persistentHandles);
-
+            // Clear the anchors.
             if ( persistentHandles.length >= 1 ) {
-                // Clear the anchors.
                 console.log('**** clearing all the anchors');
+
                 while( persistentHandles.length != 0 ) {
                     const handle = persistentHandles.pop();
                     await this.renderer.xr.deleteAnchor( handle );
@@ -231,11 +231,21 @@ export class CinemaSessionAR {
                 } );
 
                 this.anchorCubes = new Map();
-            } else if (controllerPosition !== null) {
-                const uuid = await this.renderer.xr.createAnchor( controllerPosition, controllerRotation, true );
-                persistentHandles.push( uuid );
-                localStorage.setItem( anchorsId, JSON.stringify(persistentHandles) );
-                console.log('**** creating anchor', anchorsId);
+            } else {
+                if (anchorPosition !== undefined && anchorRotation != undefined) {
+                    // Create a new anchor
+                    console.log('**** creating anchor', anchorsId);
+
+                    // Create an anchor in the wall.
+                    const anchorPosition = this.raycastingManager?.getLatestVerticalHitCenter();
+
+                    // const controllerRotation = new Quaternion().setFromEuler( controller.rotation );
+                    const anchorRotation = new Quaternion().setFromEuler( this.raycastingManager?.getLatestVerticalHitObject()?.rotation! );    
+
+                    const uuid = await this.renderer.xr.createAnchor( anchorPosition, anchorRotation, true );
+                    persistentHandles.push( uuid );
+                    localStorage.setItem( anchorsId, JSON.stringify(persistentHandles) );
+                }
             }
         });
     }

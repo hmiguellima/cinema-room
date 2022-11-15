@@ -1,9 +1,10 @@
-import { Box3, Camera, Group, Raycaster, Scene, Vector3 } from "three";
+import { Camera, Group, Object3D, Raycaster, Scene, Vector3 } from "three";
 
 // TODO: Ideally the video player should be pinnable in one of the walls detected by the PlanesManager.
 export class RaycastingManager {
     private raycaster = new Raycaster();
-    private lastVerticalHit: Vector3 | null = null;
+    private lastVerticalHitCenter?: Vector3;
+    private lastVerticalHitObject?: Object3D;
 
     constructor(private controller: Group, private camera: Camera, private scene: Scene) {
     }
@@ -21,7 +22,8 @@ export class RaycastingManager {
                 if (intersects[0].object.name === 'plane-Vertical') {
                     const center = this.getCenterPoint(i.object);
 
-                    this.lastVerticalHit = center;
+                    this.lastVerticalHitCenter = center;
+                    this.lastVerticalHitObject = intersects[0].object;
                     return;
                 }
             })
@@ -37,8 +39,12 @@ export class RaycastingManager {
         return center;
     }
 
-    public getLatestVerticalHit() {
-        return this.lastVerticalHit;
+    public getLatestVerticalHitCenter(): Vector3 | undefined {
+        return this.lastVerticalHitCenter;
+    }
+
+    public getLatestVerticalHitObject(): Object3D | undefined {
+        return this.lastVerticalHitObject;
     }
 
     public destroy() {
