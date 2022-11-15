@@ -9,12 +9,15 @@
     "build:prod": "webpack --mode=production --node-env=production",
     "build:server": "tsc --project tsconfig.server.json",
     "watch": "webpack --watch",
-    "start": "node dist-server/server/main.js"
+    "start": "node dist-server/server/main.js",
+    "start:https": "HTTPS=true node dist-server/server/main.js "
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "express": "^4.17.2",
+    "fs": "0.0.1-security",
+    "https": "^1.0.0",
     "shaka-player": "^3.2.0",
     "socket.io": "^4.4.0",
     "socket.io-client": "^4.4.0",
