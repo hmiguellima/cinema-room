@@ -1,5 +1,5 @@
 import { Player } from "shaka-player";
-import { Object3D, Vector3, WebGLRenderer } from "three";
+import { Box3, Object3D, Plane, Vector3, WebGLRenderer } from "three";
 import { PlayoutData } from "../common/net-scheme";
 import { ControllersAR } from "./controllers-ar";
 
@@ -50,11 +50,8 @@ export class VideoPlayer {
             const tvPosition = new Vector3();
             tv.getWorldPosition(tvPosition);
 
-            // const tvRotation: Vector3 = new Vector3();
-            // tv.getWorldDirection(tvRotation);
-
+            // TODO: fix screen rotation.
             const anchorRotation = Math.atan2( ( camera.position.x - tvPosition.x ), ( camera.position.z - tvPosition.z ) ); // Anchor should face the camera.
-            // boxMesh.rotation.y = anchorRotation;
 
             const refSpace = renderer.xr.getReferenceSpace() as any;
             const xrMediaBinding = new XRMediaBinding(session);
@@ -77,8 +74,8 @@ export class VideoPlayer {
                 space: refSpace,
                 // layout: 'stereo-left-right',
                 transform: transform,
-                width: 0.36,
-                height: 0.2,
+                width: 0.54,
+                height: 0.3,
             });
 
             session.updateRenderState({
