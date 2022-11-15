@@ -3,6 +3,7 @@ import { ARButton } from "three/examples/jsm/webxr/ARButton";
 import { EventType } from "../client/controllers";
 import { ControllersAR } from "./controllers-ar";
 import { PlanesManager } from "./planes-manager";
+import { RaycastingManager } from "./raycasting-manager";
 import { VideoPlayer } from "./videoplayer";
 
 export class CinemaSessionAR {
@@ -17,6 +18,7 @@ export class CinemaSessionAR {
     private videoPlayer?: VideoPlayer;
     private planeManager?: PlanesManager;
     private controllers?: ControllersAR;
+    private raycastingManager?: RaycastingManager;
 
     constructor() {
         this.init();
@@ -68,9 +70,13 @@ export class CinemaSessionAR {
         this.renderer.xr.addEventListener( 'sessionstart', this.onSessionStart);
 
         // Init planes.
-        this.planeManager = new PlanesManager(this.renderer);
+        this.planeManager = new PlanesManager(this.renderer, this.scene);
 
+        // Init anchors.
         this.initAnchors();
+
+        // Init raycasting.
+        this.raycastingManager = new RaycastingManager(this.controller0!, this.camera, this.scene);
 
         this.session.addEventListener('end', this.onDestroy);
     }
@@ -94,9 +100,9 @@ export class CinemaSessionAR {
 
     destroy() {
         this.planeManager?.destroy();
+        this.raycastingManager?.destroy();
         this.clearAnchors();
         this.videoPlayer?.destroy();
-        this.renderer.xr.removeEventListener( 'sessionstart', this.onSessionStart);
         this.session.removeEventListener('end', this.onDestroy);
     }
 
@@ -154,7 +160,7 @@ export class CinemaSessionAR {
         const detectedAnchors = e.data;
         const referenceSpace = this.renderer.xr.getReferenceSpace();
 
-        // console.log( `Detected ${detectedAnchors.size} anchors` );
+        console.log( `Detected ${detectedAnchors.size} anchors` );
 
         detectedAnchors.forEach( async (anchor: any) => {
             if ( this.anchorsAdded.has( anchor ) ) return;
@@ -197,18 +203,23 @@ export class CinemaSessionAR {
                 return;
             }
 
-            const controllerPosition = controller.position;
-            const controllerRotation = new Quaternion().setFromEuler( controller.rotation );
+            // Uncomment this to create an anchor in controller/hand position.
+            // const controllerPosition = controller.position;
 
-            // const cameraPosition = this.camera.position;
-            // const anchorRotation = Math.atan2( ( cameraPosition.x - controller.position.x ), ( cameraPosition.z - controller.position.z ) ); // Anchor should face the camera.
+            // Create an anchor in the wall.
+            const controllerPosition = this.raycastingManager?.getLatestVerticalHit();
+
+            const controllerRotation = new Quaternion().setFromEuler( controller.rotation );
 
             const anchorsId = 'webxr_ar_anchors_handles';
             const val = localStorage.getItem( anchorsId );
             const persistentHandles = JSON.parse( val! ) || [];
 
+            console.log('**** persistentHandles:', persistentHandles);
+
             if ( persistentHandles.length >= 1 ) {
                 // Clear the anchors.
+                console.log('**** clearing all the anchors');
                 while( persistentHandles.length != 0 ) {
                     const handle = persistentHandles.pop();
                     await this.renderer.xr.deleteAnchor( handle );
@@ -220,11 +231,11 @@ export class CinemaSessionAR {
                 } );
 
                 this.anchorCubes = new Map();
-
-            } else {
+            } else if (controllerPosition !== null) {
                 const uuid = await this.renderer.xr.createAnchor( controllerPosition, controllerRotation, true );
                 persistentHandles.push( uuid );
                 localStorage.setItem( anchorsId, JSON.stringify(persistentHandles) );
+                console.log('**** creating anchor', anchorsId);
             }
         });
     }
@@ -238,7 +249,10 @@ export class CinemaSessionAR {
 
     private render = () => {
         if (!this.renderer.xr.isPresenting) return;
-        this.renderer.render(this.scene, this.camera);
+
+        this.raycastingManager?.render();
         this.controllers?.update();
+
+        this.renderer.render(this.scene, this.camera);
     }
 }
