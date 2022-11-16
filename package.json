@@ -10,7 +10,7 @@
     "build:server": "tsc --project tsconfig.server.json",
     "watch": "webpack --watch",
     "start": "node dist-server/server/main.js",
-    "start:https": "HTTPS=true node dist-server/server/main.js "
+    "start:https": "PORT=4000 HTTPS=true node dist-server/server/main.js "
   },
   "author": "",
   "license": "ISC",
