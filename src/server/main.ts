@@ -4,8 +4,8 @@ import http from 'http';
 import { Server, Socket} from 'socket.io';
 import { ServerToClientEvents, ClientToServerEvents, User, VideoPlayer } from '../common/net-scheme';
 
-import { https } from 'https';
-import { fs } from 'fs';
+import https from 'https';
+import fs from 'fs';
 
 function findSeat(): number {
     for (let i = 0; i < MAX_USERS; i++) {
