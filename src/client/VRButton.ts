@@ -70,6 +70,7 @@ export class VRButton {
 			element.style.zIndex = '999';
 		}
 
+		console.log("XR: ", (navigator as any).xr);
 		if ( 'xr' in navigator ) {
 			button.id = 'VRButton';
 			stylizeElement(button);

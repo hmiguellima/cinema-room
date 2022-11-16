@@ -4,6 +4,7 @@ import { VRButton } from './VRButton';
 import { ClientToServerEvents, PlayoutData, ServerToClientEvents, User } from '../common/net-scheme';
 import { HomeCinemaSession } from './cinema-session';
 import { io, Socket } from 'socket.io-client';
+import { getBrightnessRegions, ShakaThumbnail } from './backlight';
 
 async function loadVideo() {
     videoPlayer = new Player(videoEl);
@@ -22,16 +23,40 @@ async function loadVideo() {
     await videoPlayer.load(asset.streamUri);
 }
 
+function getThumbnailImageTrack () {
+    const imageTracks = videoPlayer?.getImageTracks();
+    if (imageTracks && imageTracks.length) {
+        const mimeTypesPreference = [
+            'image/jpeg',
+            'image/png',
+            'image/svg+xml',
+        ];
+        for (const mimeType of mimeTypesPreference) {
+            const estimatedBandwidth = videoPlayer?.getStats().estimatedBandwidth;
+            if(estimatedBandwidth){
+                const bestOptions = (imageTracks).filter((track) => {
+                    return track.mimeType?.toLowerCase() === mimeType && track.bandwidth < estimatedBandwidth * 0.01;
+                });
+                if (bestOptions && bestOptions.length) {
+                    return bestOptions[0];
+                }
+            }
+        }
+        return imageTracks[0];
+    }
+}
+
 function startImmersiveSession(session: XRSession) {
     const asset: PlayoutData = assets[selectEl.selectedIndex];
-    if (asset.fps === 24) { 
+    if (asset.fps === 24) {
         (session as any).updateTargetFrameRate(72);
     } else if (asset.fps === 30) {
         (session as any).updateTargetFrameRate(60);
     }
 
-    immersiveSession = new HomeCinemaSession(session, videoEl, asset.layout);
+    immersiveSession = new HomeCinemaSession(session, videoEl, asset.layout, { hCount: 2, vCount: 2 });
     immersiveSession.run();    
+
     session.addEventListener('end', () => {
         immersiveSession = null;
     })
@@ -65,9 +90,42 @@ function listenToServer() {
     });
 }
 
-function listenToPlayerEvents() {
-    // TODO: listen to state updates from player and video element
-    // TODO: send updates to server
+async function handleTimeUpdate(event: any) {
+    const imageTrack = getThumbnailImageTrack();
+    const thumbnail = await videoPlayer?.getThumbnails(imageTrack?.id || 0, event.path[0].currentTime);
+    const newPos = {
+        posX: thumbnail!.positionX,
+        posY: thumbnail!.positionY,
+    }
+    if (lastPos.posX != newPos.posX || lastPos.posY != newPos.posY) {
+        lastPos = newPos;
+        const shakaThumbnail: ShakaThumbnail = {
+            imageHeight: thumbnail!.height,
+            imageWidth: thumbnail!.width,
+            duration: thumbnail!.duration,
+            positionX: thumbnail!.positionX,
+            positionY: thumbnail!.positionY,
+            startTime: thumbnail!.startTime,
+            uris: thumbnail!.uris,
+        }
+        getBrightnessRegions(shakaThumbnail).then((e: any) => {
+            immersiveSession?.updateLedStrips(e);
+            console.log(e);
+        });
+        console.log('-- thumbnail -- 2');
+        console.log(shakaThumbnail);
+    }
+}
+
+let lastPos = {
+    posX: -1,
+    posY: -1,
+};
+
+async function listenToPlayerEvents() {
+    console.log('videoPlayer ----------');
+    console.log(videoPlayer);
+    document.getElementsByTagName('video')[0]?.addEventListener('timeupdate', async (event: any) => { handleTimeUpdate(event) });
 }
 
 const selectEl: HTMLSelectElement = document.getElementById('assetSelect') as HTMLSelectElement;
@@ -76,6 +134,12 @@ if (!selectEl) {
 }
 
 const videoEl = document.createElement('video');
+
+selectEl.onchange = () => {
+    loadVideo();
+};
+
+document.querySelector('#shakaDomContainer')?.append(videoEl);
 videoEl.crossOrigin = 'anonymous';
 videoEl.preload = 'auto';
 videoEl.autoplay = true;
@@ -111,7 +175,6 @@ const assets: Array<PlayoutData> = [
         fps: 24,
         streamUri: 'https://g004-vod-us-cmaf-stg-ak.cdn.peacocktv.com/pub/global/sat/3D/FrameCompatibleSBS/master_cmaf.mpd',
         layout: 'stereo-left-right',
-        default: true
     },
     {
         name: 'Sintel Dash Widevine | 24fps',
@@ -119,6 +182,13 @@ const assets: Array<PlayoutData> = [
         streamUri: 'https://storage.googleapis.com/shaka-demo-assets/sintel-widevine/dash.mpd',
         layout: 'mono',
         drmUri: 'https://cwip-shaka-proxy.appspot.com/no_auth',
+    },
+    {
+        name: 'BBB with Thumbs',
+        fps: 30,
+        streamUri: 'https://dash.akamaized.net/akamai/bbb_30fps/bbb_with_multiple_tiled_thumbnails.mpd',
+        layout: 'mono',
+        default: true
     }
 ];
 
@@ -131,11 +201,15 @@ const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io();
 
 buildOptions();
 
+loadVideo();
 VRButton.createButton(loadVideo, startImmersiveSession).then(element => {
     // we get a button only if WebXR is supported, otherwise we get an anchor
+    console.log("Element: ", element);
     if ('disabled' in element) { // button
         sessionStartButton = element;
-        listenToServer();
+        // listenToServer();
+        sessionStartButton.innerText = 'ENTER ROOM';
+        sessionStartButton.disabled = false;
     }
 
     document.body.appendChild(element);

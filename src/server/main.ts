@@ -4,6 +4,9 @@ import http from 'http';
 import { Server, Socket} from 'socket.io';
 import { ServerToClientEvents, ClientToServerEvents, User, VideoPlayer } from '../common/net-scheme';
 
+import { https } from 'https';
+import { fs } from 'fs';
+
 function findSeat(): number {
     for (let i = 0; i < MAX_USERS; i++) {
         if (!seatMap[i]) {
@@ -73,7 +76,7 @@ function setupNewUser(socket: Socket<ClientToServerEvents, ServerToClientEvents,
 
         console.log('a user connected', user.id);
     } else {
-        socket.emit('roomFull');
+        // socket.emit('roomFull');
     }
 }
 
@@ -89,15 +92,36 @@ const INDEX = path.join(__dirname, HTML_FOLDER, 'index.html');
 
 // define routes and socket
 const app = express();
-app.get('/', function(req, res) { res.sendFile(INDEX); });
+
+const isHttps = Boolean(process.env.HTTPS);
+
+let server;
+if (isHttps) {
+  const httpsOption = {
+    key: fs.readFileSync("./certs/clients_dev_peacocktv_com.key"),
+    cert: fs.readFileSync(`./certs/clients_dev_peacocktv_com.pem`),
+  };
+
+  console.log("Is https: ", Boolean(isHttps));
+  server = https.createServer(httpsOption, app);
+  server.listen(PORT, () => {
+    console.log(`listening on *:${PORT}`);
+  });
+} else {
+  server = http.createServer(app);
+  server.listen(PORT, () => {
+    console.log(`listening on *:${PORT}`);
+  });
+}
+
+// define routes and socket
+app.get("/", function (req, res) {
+  res.sendFile(INDEX);
+});
+
 const staticAssetsHandler = express.static(path.join(__dirname, HTML_FOLDER));
 app.use('/', staticAssetsHandler);
 
-const server = http.createServer(app);
 const io = new Server<ClientToServerEvents, ServerToClientEvents, {}, {}>(server);
-
-server.listen(PORT, () => {
-    console.log(`listening on *:${PORT}`);
-});
 
 io.on('connection', setupNewUser);
