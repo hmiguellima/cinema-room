@@ -2,6 +2,7 @@ import { BoxGeometry, Camera, Group, HemisphereLight, Mesh, MeshBasicMaterial, M
 import { ARButton } from "three/examples/jsm/webxr/ARButton";
 import { EventType } from "../client/controllers";
 import { throttle } from "../common/throttle";
+import { PlayoutData } from "../common/net-scheme";
 import { ControllersAR } from "./controllers-ar";
 import { PlanesManager } from "./planes-manager";
 import { RaycastingManager } from "./raycasting-manager";
@@ -21,6 +22,7 @@ export class CinemaSessionAR {
     private controllers?: ControllersAR;
     private raycastingManager?: RaycastingManager;
     private updateScreenSize?: (percentage: number) => void;
+    private remoteAsset?: PlayoutData;
 
     constructor() {
         this.init();
@@ -50,10 +52,13 @@ export class CinemaSessionAR {
 
         //
 
-        document.body.appendChild( ARButton.createButton( this.renderer, {
+        const xrSessionConfig = {
             requiredFeatures: ['anchors', 'plane-detection'], // TODO: add hit-test when working on Quest.
             optionalFeatures: [ 'hand-tracking', 'layers' ]
-        } ) );
+        };
+
+        document.body.appendChild( ARButton.createButton( this.renderer,  xrSessionConfig) );
+        this.listenForExternalRequests(xrSessionConfig);
 
         this.controller0 = this.renderer.xr.getController( 0 );
         this.scene.add( this.controller0! );
@@ -79,8 +84,18 @@ export class CinemaSessionAR {
 
         // Init raycasting.
         this.raycastingManager = new RaycastingManager(this.controller0!, this.camera, this.scene);
+    }
 
-        this.session.addEventListener('end', this.onDestroy);
+    private listenForExternalRequests(xrSessionConfig: {
+        requiredFeatures: string[];
+        optionalFeatures: string[];
+    }) {
+        window.addEventListener('message', async (e) => {
+            this.remoteAsset = e.data;
+            const session: XRSession = await (navigator as any).xr.requestSession( 'immersive-ar', xrSessionConfig );
+            this.renderer.xr.setReferenceSpaceType('local');
+            this.renderer.xr.setSession(session);
+        });
     }
 
     private onDestroy = () => {
@@ -98,6 +113,7 @@ export class CinemaSessionAR {
         }
 
         this.session = (event.target as WebXRManager).getSession();
+        this.session.addEventListener('end', this.onDestroy);
     }
 
     destroy() {
@@ -168,7 +184,7 @@ export class CinemaSessionAR {
         const detectedAnchors = e.data;
         const referenceSpace = this.renderer.xr.getReferenceSpace();
 
-        console.log( `Detected ${detectedAnchors.size} anchors` );
+        // console.log( `Detected ${detectedAnchors.size} anchors` );
 
         detectedAnchors.forEach( async (anchor: any) => {
             if ( this.anchorsAdded.has( anchor ) ) return;
@@ -195,7 +211,7 @@ export class CinemaSessionAR {
 
             if (this.videoPlayer === undefined) {
                 this.videoPlayer = new VideoPlayer(this.controllers!);
-                this.videoPlayer.init();
+                this.videoPlayer.init(this.remoteAsset);
             }
 
             this.updateScreenSize = throttle((percent: number) => this.videoPlayer!.updateScreenSize(percent), 200);
@@ -208,8 +224,8 @@ export class CinemaSessionAR {
 
     private handleControllerEventsAnchors(controller: Group) {
         controller.addEventListener('selectend', async (event: any) => {
-            if (event.data.handedness === 'right') {
-                console.log('right hand detected');
+            if (event.data.handedness === 'left') {
+                console.log('left hand detected');
                 return;
             }
 

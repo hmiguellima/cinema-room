@@ -21,8 +21,8 @@ export class VideoPlayer {
         this.videoElement.addEventListener('pause', this.onPause);
     }
 
-    public async init() {
-        const asset: PlayoutData = this.assets[0];
+    public async init(remoteAsset?: PlayoutData) {
+        const asset: PlayoutData = remoteAsset || this.assets[0];
         if (asset.drmUri) {
             this.videoPlayer.configure({
                 drm: {
@@ -31,7 +31,17 @@ export class VideoPlayer {
                     }
                 }
             });
-        }    
+        }
+        if (asset.headers) {
+            const headers: {[key:string]:string} = {};
+
+            this.videoPlayer?.getNetworkingEngine()?.
+                registerRequestFilter((type: shaka.net.NetworkingEngine.RequestType, request: shaka.extern.Request) => {
+                    if (type === shaka.net.NetworkingEngine.RequestType.LICENSE) {
+                        request.headers = headers;
+                    }
+                });
+        }
         await this.videoPlayer?.load(asset.streamUri);
     }
 

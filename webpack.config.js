@@ -29,7 +29,8 @@ const config = {
     new CopyPlugin({
       patterns: [
         { from: path.resolve(__dirname, 'assets'), to: 'assets' },
-        { from: path.resolve(__dirname, 'html/main.css') }
+        { from: path.resolve(__dirname, 'html/main.css') },
+        { from: path.resolve(__dirname, 'html/container.html') }
       ],
     }),
   ],

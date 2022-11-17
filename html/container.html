@@ -1,0 +1,16 @@
+<html>
+    <head>
+    </head>
+    <body>
+        Container page
+        <button id="startBtn">Start</button>
+        <iframe src="index.html" id="iframe" frameborder="0" allow="xr-spatial-tracking" allowfullscreen=""></iframe>
+        <script>
+            document.getElementById('startBtn').addEventListener('click', function() {
+                document.getElementById('iframe').contentWindow.postMessage({
+                    streamUri: 'https://d1wkjvw8nof1jc.cloudfront.net/jumanji-trailer-1_h1080p/encoded-20-05-09-fri-jan-2018/encoded-20-05-09-fri-jan-2018.mp4'
+                });
+            });
+        </script>
+    </body>
+</html>
