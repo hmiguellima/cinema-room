@@ -1,0 +1,14 @@
+<html>
+    <head>
+    </head>
+    <body>
+        Container page
+        <button id="startBtn">Start</button>
+        <iframe src="index.html" id="iframe" frameborder="0" allow="xr-spatial-tracking" allowfullscreen=""></iframe>
+        <script>
+            document.getElementById('startBtn').addEventListener('click', function() {
+                document.getElementById('iframe').contentWindow.postMessage('yo');
+            });
+        </script>
+    </body>
+</html>

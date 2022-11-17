@@ -48,10 +48,13 @@ export class CinemaSessionAR {
 
         //
 
-        document.body.appendChild( ARButton.createButton( this.renderer, {
+        const xrSessionConfig = {
             requiredFeatures: ['anchors', 'plane-detection'], // TODO: add hit-test when working on Quest.
             optionalFeatures: [ 'hand-tracking', 'layers' ]
-        } ) );
+        };
+
+        document.body.appendChild( ARButton.createButton( this.renderer,  xrSessionConfig) );
+        this.listenForExternalRequests(xrSessionConfig);
 
         this.controller0 = this.renderer.xr.getController( 0 );
         this.scene.add( this.controller0! );
@@ -77,8 +80,17 @@ export class CinemaSessionAR {
 
         // Init raycasting.
         this.raycastingManager = new RaycastingManager(this.controller0!, this.camera, this.scene);
+    }
 
-        this.session.addEventListener('end', this.onDestroy);
+    private listenForExternalRequests(xrSessionConfig: {
+        requiredFeatures: string[];
+        optionalFeatures: string[];
+    }) {
+        window.addEventListener('message', async (e) => {
+            const session: XRSession = await (navigator as any).xr.requestSession( 'immersive-ar', xrSessionConfig );
+            this.renderer.xr.setReferenceSpaceType('local');
+            this.renderer.xr.setSession(session);
+        });
     }
 
     private onDestroy = () => {
@@ -96,6 +108,7 @@ export class CinemaSessionAR {
         }
 
         this.session = (event.target as WebXRManager).getSession();
+        this.session.addEventListener('end', this.onDestroy);
     }
 
     destroy() {
