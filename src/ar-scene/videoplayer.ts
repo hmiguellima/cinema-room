@@ -39,9 +39,13 @@ export class VideoPlayer {
                 registerRequestFilter((type: shaka.net.NetworkingEngine.RequestType, request: shaka.extern.Request) => {
                     if (type === shaka.net.NetworkingEngine.RequestType.LICENSE) {
                         request.headers = headers;
+                        console.log(">>> License request headers: ", request.headers);
                     }
                 });
+
         }
+
+        console.log(">>> Video Asset: ", asset);
         await this.videoPlayer?.load(asset.streamUri);
     }
 

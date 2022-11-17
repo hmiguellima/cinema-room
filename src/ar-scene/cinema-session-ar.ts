@@ -55,7 +55,17 @@ export class CinemaSessionAR {
             optionalFeatures: [ 'hand-tracking', 'layers' ]
         };
 
-        document.body.appendChild( ARButton.createButton( this.renderer,  xrSessionConfig) );
+        const arButton = ARButton.createButton( this.renderer,  xrSessionConfig);
+        arButton.classList.add('ar-button');
+        arButton.addEventListener('click', async () => {
+            console.log("Clicked on AR Button");
+            console.log(this.remoteAsset);
+            const session: XRSession = await (navigator as any).xr.requestSession( 'immersive-ar', xrSessionConfig );
+            this.renderer.xr.setReferenceSpaceType('local');
+            this.renderer.xr.setSession(session);
+        });
+
+        document.body.appendChild(arButton);
         this.listenForExternalRequests(xrSessionConfig);
 
         this.controller0 = this.renderer.xr.getController( 0 );
@@ -90,9 +100,6 @@ export class CinemaSessionAR {
     }) {
         window.addEventListener('message', async (e) => {
             this.remoteAsset = e.data;
-            const session: XRSession = await (navigator as any).xr.requestSession( 'immersive-ar', xrSessionConfig );
-            this.renderer.xr.setReferenceSpaceType('local');
-            this.renderer.xr.setSession(session);
         });
     }
 
