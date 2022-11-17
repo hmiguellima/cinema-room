@@ -1,6 +1,7 @@
 import { BoxGeometry, Camera, Group, HemisphereLight, Mesh, MeshBasicMaterial, MeshPhongMaterial, PerspectiveCamera, Quaternion, RingGeometry, Scene, WebGLRenderer, WebXRManager } from "three";
 import { ARButton } from "three/examples/jsm/webxr/ARButton";
 import { EventType } from "../client/controllers";
+import { throttle } from "../common/throttle";
 import { ControllersAR } from "./controllers-ar";
 import { PlanesManager } from "./planes-manager";
 import { RaycastingManager } from "./raycasting-manager";
@@ -19,6 +20,7 @@ export class CinemaSessionAR {
     private planeManager?: PlanesManager;
     private controllers?: ControllersAR;
     private raycastingManager?: RaycastingManager;
+    private updateScreenSize?: (percentage: number) => void;
 
     constructor() {
         this.init();
@@ -118,6 +120,12 @@ export class CinemaSessionAR {
                 this.videoPlayer?.pause();
                 this.session?.end();
                 break;
+            case EventType.screen_size_increase:
+                this.updateScreenSize?.(10);
+                break;
+            case EventType.screen_size_decrease:
+                this.updateScreenSize?.(-10);
+                break;
         }
     }
 
@@ -189,6 +197,8 @@ export class CinemaSessionAR {
                 this.videoPlayer = new VideoPlayer(this.controllers!);
                 this.videoPlayer.init();
             }
+
+            this.updateScreenSize = throttle((percent: number) => this.videoPlayer!.updateScreenSize(percent), 200);
 
             this.videoPlayer.showVideoPlayer(this.renderer, this.session, boxMesh, this.camera);
 

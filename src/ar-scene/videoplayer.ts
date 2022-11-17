@@ -104,6 +104,21 @@ export class VideoPlayer {
         await this.videoElement.play();
     }
 
+    // percentage can be positive or negative i.e. (-10%) -10
+    public updateScreenSize(percentage: number) {
+        if(this.videoLayer) {
+            const currentW = this.videoLayer.width;
+            const currentH = this.videoLayer.height;
+            const newW = currentW - ((-percentage / 100) * currentW);
+            const newH = currentH - ((-percentage / 100) * currentH);
+
+            if(newW <= 0 || newH <= 0) return;
+
+            this.videoLayer.width = newW;
+            this.videoLayer.height = newH;
+        }
+    }
+
     private assets: Array<PlayoutData> = [
         {
             name: 'Sintel Dash Widevine | 24fps',
