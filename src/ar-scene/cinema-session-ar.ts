@@ -214,8 +214,8 @@ export class CinemaSessionAR {
 
     private handleControllerEventsAnchors(controller: Group) {
         controller.addEventListener('selectend', async (event: any) => {
-            if (event.data.handedness === 'right') {
-                console.log('right hand detected');
+            if (event.data.handedness === 'left') {
+                console.log('left hand detected');
                 return;
             }
 
