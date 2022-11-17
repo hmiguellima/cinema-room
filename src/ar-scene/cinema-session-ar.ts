@@ -160,7 +160,7 @@ export class CinemaSessionAR {
         const detectedAnchors = e.data;
         const referenceSpace = this.renderer.xr.getReferenceSpace();
 
-        console.log( `Detected ${detectedAnchors.size} anchors` );
+        // console.log( `Detected ${detectedAnchors.size} anchors` );
 
         detectedAnchors.forEach( async (anchor: any) => {
             if ( this.anchorsAdded.has( anchor ) ) return;
