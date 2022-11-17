@@ -1,6 +1,7 @@
 import { BoxGeometry, Camera, Group, HemisphereLight, Mesh, MeshBasicMaterial, MeshPhongMaterial, PerspectiveCamera, Quaternion, RingGeometry, Scene, WebGLRenderer, WebXRManager } from "three";
 import { ARButton } from "three/examples/jsm/webxr/ARButton";
 import { EventType } from "../client/controllers";
+import { PlayoutData } from "../common/net-scheme";
 import { ControllersAR } from "./controllers-ar";
 import { PlanesManager } from "./planes-manager";
 import { RaycastingManager } from "./raycasting-manager";
@@ -19,6 +20,7 @@ export class CinemaSessionAR {
     private planeManager?: PlanesManager;
     private controllers?: ControllersAR;
     private raycastingManager?: RaycastingManager;
+    private remoteAsset?: PlayoutData;
 
     constructor() {
         this.init();
@@ -87,6 +89,7 @@ export class CinemaSessionAR {
         optionalFeatures: string[];
     }) {
         window.addEventListener('message', async (e) => {
+            this.remoteAsset = e.data;
             const session: XRSession = await (navigator as any).xr.requestSession( 'immersive-ar', xrSessionConfig );
             this.renderer.xr.setReferenceSpaceType('local');
             this.renderer.xr.setSession(session);
@@ -200,7 +203,7 @@ export class CinemaSessionAR {
 
             if (this.videoPlayer === undefined) {
                 this.videoPlayer = new VideoPlayer(this.controllers!);
-                this.videoPlayer.init();
+                this.videoPlayer.init(this.remoteAsset);
             }
 
             this.videoPlayer.showVideoPlayer(this.renderer, this.session, boxMesh, this.camera);

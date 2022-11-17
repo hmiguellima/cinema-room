@@ -56,6 +56,7 @@ export type PlayoutData = {
     fps: FPS;
     layout: StereoLayout;
     default?: boolean;
+    headers?: {[k: string]: string};
 };
 
 export type VideoPlayer = {
