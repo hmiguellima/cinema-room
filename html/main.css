@@ -119,4 +119,7 @@ body {
     width: 102% !important;
     overflow: hidden;
     left: -1% !important;
+	top: -38px !important;
+    position: relative !important;
+    height: 30px !important;
 }

@@ -57,7 +57,9 @@ export class CinemaSessionAR {
             optionalFeatures: [ 'hand-tracking', 'layers' ]
         };
 
-        const arButton = ARButton.createButton( this.renderer,  xrSessionConfig);
+        // const arButton = ARButton.createButton( this.renderer,  xrSessionConfig);
+        const arButton = document.createElement('button');
+        arButton.innerText = "Watch Now";
         arButton.classList.add('ar-button');
         arButton.addEventListener('click', async () => {
             console.log("Clicked on AR Button");
