@@ -216,7 +216,7 @@ export class CinemaSessionAR {
 
             this.updateScreenSize = throttle((percent: number) => this.videoPlayer!.updateScreenSize(percent), 200);
 
-            this.videoPlayer.showVideoPlayer(this.renderer, this.session, boxMesh, this.camera);
+            this.videoPlayer.showVideoPlayer(this.renderer, this.session, boxMesh, this.camera!);
 
             this.anchorCubes.set( anchor, boxMesh );
         } );
