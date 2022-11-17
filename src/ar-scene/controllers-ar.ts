@@ -43,21 +43,25 @@ export class ControllersAR {
         this.handleControllerEvents(this.controller2, this.hand2);
 
         const uiConfig = {
-            panelSize: { width: 0.250, height: 0.125},
-            width: 256,
+            panelSize: { width: 0.260, height: 0.125},
+            width: 270,
             height: 128,
             opacity: 0.7,
             info: { type: "text", position:{ left: 6, top: 6 }, width: 244, height: 58, backgroundColor: "#aaa", fontColor: "#000", fontSize: 20 },
             pause: { type: "button", position:{ top: 70, left: 6 }, width: 40, height: 52, backgroundColor: "#bbb", fontColor: "#bb0", hover: "#fff", onSelect: () => this.evtHandler(EventType.pause)},
             play: { type: "button", position:{ top: 70, left: 60 }, width: 40, height: 52, backgroundColor: "#bbb", fontColor: "#bb0", hover: "#fff", onSelect: () => this.evtHandler(EventType.play) },
             stop: { type: "button", position:{ top: 70, left: 114 }, width: 40, height: 52, backgroundColor: "#bbb", fontColor: "#bb0", hover: "#fff", onSelect: () => this.evtHandler(EventType.exit) },
+            increaseScreenSize: { type: "button", position:{ top: 70, left: 168 }, width: 40, height: 52, backgroundColor: "#bbb", fontColor: "#bb0", hover: "#fff", onSelect: () => this.evtHandler(EventType.screen_size_increase) },
+            decreaseScreenSize: { type: "button", position:{ top: 70, left: 226 }, width: 40, height: 52, backgroundColor: "#bbb", fontColor: "#bb0", hover: "#fff", onSelect: () => this.evtHandler(EventType.screen_size_decrease) },
             renderer: this.renderer
         };
         const uiContent = {
             info: 'loading',
             pause: '<path>M 17 10 L 7 10 L 7 40 L 17 40 Z M 32 10 L 22 10 L 22 40 L 32 40 Z</path>',
             stop: '<path>M 7 10 L 32 10 L 32 40 L 7 40 Z</path>',
-            play: '<path>M 32 25 L 12 10 L 12 40 Z</path>'
+            play: '<path>M 32 25 L 12 10 L 12 40 Z</path>',
+            increaseScreenSize: '<path>M 32 20 L 22 13 L 32 10 Z M 12 40 L 12 30 L 23 38 Z M 29 18 L 25 15 L 15 32 L 19 35 Z</path>',
+            decreaseScreenSize: '<path>M 32 20 L 22 13 L 22 25 Z M 22 25 L 12 30 L 23 38 Z M 26 16 L 29 18 L 32 14 L 29 12 Z M 13 36 L 16 38 L 19 34 L 16 32 Z</path>'
         };
         this.ui = new CanvasUI(uiContent, uiConfig);
         this.ui.mesh.visible = false;
