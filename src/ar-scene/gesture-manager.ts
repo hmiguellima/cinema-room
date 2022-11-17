@@ -9,9 +9,6 @@ export class GestureManager {
         this.handleControllerEventsLeftHandGestures(this.controller1!);
     }
     
-    private startPosition?: DOMPointReadOnly;
-    private endPosition?: DOMPointReadOnly;
-
     private handleControllerEventsLeftHandGestures(controller: Group) {
         controller.addEventListener('selectstart', async (event: any) => {
             if (event.data.handedness === 'right') {
@@ -42,7 +39,7 @@ export class GestureManager {
 
             //TODO: implement custom gesture for right hand here.
 
-            console.log('**** GestureManager-selectstart: right hand detected - start:', this.startPosition);
+            console.log('**** GestureManager-selectstart: right hand detected - start:');
         });
 
         controller.addEventListener('selectend', async (event: any) => {
@@ -52,7 +49,7 @@ export class GestureManager {
 
             //TODO: implement custom gesture for right hand here.
 
-            console.log('**** GestureManager-selectend: right hand detected - end:', this.endPosition);
+            console.log('**** GestureManager-selectend: right hand detected - end:');
         });
     }
 
