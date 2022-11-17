@@ -33,12 +33,10 @@ export class VideoPlayer {
             });
         }
         if (asset.headers) {
-            const headers: {[key:string]:string} = {};
-
             this.videoPlayer?.getNetworkingEngine()?.
                 registerRequestFilter((type: shaka.net.NetworkingEngine.RequestType, request: shaka.extern.Request) => {
-                    if (type === shaka.net.NetworkingEngine.RequestType.LICENSE) {
-                        request.headers = headers;
+                    if (type === 2) {
+                        request.headers = asset.headers!;
                     }
                 });
         }

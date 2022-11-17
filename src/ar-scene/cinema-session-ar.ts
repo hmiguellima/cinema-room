@@ -68,7 +68,7 @@ export class CinemaSessionAR {
         this.handleControllerEventsAnchors(this.controller0!);
         this.handleControllerEventsAnchors(this.controller1!);
 
-        this.controllers = new ControllersAR(this.renderer, this.scene, this.handleControllerEvent, this.controller0!, this.controller1!);
+        this.controllers = new ControllersAR(this.renderer, this.scene, this.handleControllerEvent, this.controller0!, this.controller1!, this.camera);
 
         window.addEventListener( 'resize', this.onWindowResize );
 
