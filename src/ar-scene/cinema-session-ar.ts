@@ -64,9 +64,12 @@ export class CinemaSessionAR {
         arButton.addEventListener('click', async () => {
             console.log("Clicked on AR Button");
             console.log(this.remoteAsset);
-            const session: XRSession = await (navigator as any).xr.requestSession( 'immersive-ar', xrSessionConfig );
-            this.renderer.xr.setReferenceSpaceType('local');
-            this.renderer.xr.setSession(session);
+            // const session: XRSession = await (navigator as any).xr.requestSession( 'immersive-ar', xrSessionConfig );
+            // this.renderer.xr.setReferenceSpaceType('local');
+            // this.renderer.xr.setSession(session);
+
+            this.videoPlayer = new VideoPlayer(this.controllers!);
+            this.videoPlayer.init(this.remoteAsset);
         });
 
         document.body.appendChild(arButton);
