@@ -92,6 +92,8 @@ export class ControllersAR {
             tp.applyMatrix4(camera.matrixWorldInverse);
 
             const ui = this.ui.mesh;
+
+
             ui.visible = pp.x - tp.x > leftThumb.position.distanceTo(leftPinky.position) * 2 / 3;
 
             ui.rotation.y = Math.atan2( ( camera.position.x - ui.position.x ), ( camera.position.z - ui.position.z ) );
