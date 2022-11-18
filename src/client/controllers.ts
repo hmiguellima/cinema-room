@@ -6,7 +6,9 @@ import { CanvasUI } from "./CanvasUI";
 export enum EventType {
     play,
     pause,
-    exit
+    exit,
+    screen_size_increase,
+    screen_size_decrease,
 }
 
 export type ControllerEventHandler = (evt: EventType) => void;

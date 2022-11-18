@@ -1,6 +1,7 @@
 import { BoxGeometry, Camera, Group, HemisphereLight, Mesh, MeshBasicMaterial, MeshPhongMaterial, PerspectiveCamera, Quaternion, RingGeometry, Scene, WebGLRenderer, WebXRManager } from "three";
 import { ARButton } from "three/examples/jsm/webxr/ARButton";
 import { EventType } from "../client/controllers";
+import { throttle } from "../common/throttle";
 import { PlayoutData } from "../common/net-scheme";
 import { ControllersAR } from "./controllers-ar";
 import { PlanesManager } from "./planes-manager";
@@ -20,6 +21,7 @@ export class CinemaSessionAR {
     private planeManager?: PlanesManager;
     private controllers?: ControllersAR;
     private raycastingManager?: RaycastingManager;
+    private updateScreenSize?: (percentage: number) => void;
     private remoteAsset?: PlayoutData;
 
     constructor() {
@@ -55,7 +57,8 @@ export class CinemaSessionAR {
             optionalFeatures: [ 'hand-tracking', 'layers' ]
         };
 
-        document.body.appendChild( ARButton.createButton( this.renderer,  xrSessionConfig) );
+        const arButton = ARButton.createButton( this.renderer,  xrSessionConfig);
+        document.body.appendChild(arButton);
         this.listenForExternalRequests(xrSessionConfig);
 
         this.controller0 = this.renderer.xr.getController( 0 );
@@ -90,6 +93,7 @@ export class CinemaSessionAR {
     }) {
         window.addEventListener('message', async (e) => {
             this.remoteAsset = e.data;
+            console.log(this.remoteAsset);
             const session: XRSession = await (navigator as any).xr.requestSession( 'immersive-ar', xrSessionConfig );
             this.renderer.xr.setReferenceSpaceType('local');
             this.renderer.xr.setSession(session);
@@ -133,6 +137,12 @@ export class CinemaSessionAR {
             case EventType.exit:
                 this.videoPlayer?.pause();
                 this.session?.end();
+                break;
+            case EventType.screen_size_increase:
+                this.updateScreenSize?.(10);
+                break;
+            case EventType.screen_size_decrease:
+                this.updateScreenSize?.(-10);
                 break;
         }
     }
@@ -206,7 +216,9 @@ export class CinemaSessionAR {
                 this.videoPlayer.init(this.remoteAsset);
             }
 
-            this.videoPlayer.showVideoPlayer(this.renderer, this.session, boxMesh, this.camera);
+            this.updateScreenSize = throttle((percent: number) => this.videoPlayer!.updateScreenSize(percent), 200);
+
+            this.videoPlayer.showVideoPlayer(this.renderer, this.session, boxMesh, this.camera!);
 
             this.anchorCubes.set( anchor, boxMesh );
         } );

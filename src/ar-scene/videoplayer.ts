@@ -1,5 +1,5 @@
 import { Player } from "shaka-player";
-import { Box3, Object3D, Plane, Vector3, WebGLRenderer } from "three";
+import { Camera, Matrix4, Object3D, Quaternion, Vector3, WebGLRenderer } from "three";
 import { PlayoutData } from "../common/net-scheme";
 import { ControllersAR } from "./controllers-ar";
 
@@ -37,9 +37,13 @@ export class VideoPlayer {
                 registerRequestFilter((type: shaka.net.NetworkingEngine.RequestType, request: shaka.extern.Request) => {
                     if (type === 2) {
                         request.headers = asset.headers!;
+                        console.log(">>> License request headers: ", request.headers);
                     }
                 });
+
         }
+
+        console.log(">>> Video Asset: ", asset);
         await this.videoPlayer?.load(asset.streamUri);
     }
 
@@ -52,15 +56,24 @@ export class VideoPlayer {
     }
 
     private errorCount = 0;
-    public async showVideoPlayer(renderer: WebGLRenderer, session: any, tv: Object3D, camera: any) {
+    public async showVideoPlayer(renderer: WebGLRenderer, session: any, tv: Object3D, camera: Camera) {
         try
         {
             const tvPosition = new Vector3();
             tv.getWorldPosition(tvPosition);
 
-            // TODO: fix screen rotation.
-            const anchorRotation = Math.atan2( ( camera.position.x - tvPosition.x ), ( camera.position.z - tvPosition.z ) ); // Anchor should face the camera.
+            const centerPosition = new Vector3();
+            centerPosition.x = camera.position.x;
+            centerPosition.y = tvPosition.y;
+            centerPosition.z = camera.position.z;
 
+            const rotationMatrix = new Matrix4();
+            const targetQuaternion = new Quaternion();
+            rotationMatrix.lookAt( centerPosition, tvPosition, tv.up );
+            targetQuaternion.setFromRotationMatrix( rotationMatrix );
+
+            // const anchorRotation = Math.atan2( ( camera.position.x - tvPosition.x ), ( camera.position.z - tvPosition.z ) );
+            
             const refSpace = renderer.xr.getReferenceSpace() as any;
             const xrMediaBinding = new XRMediaBinding(session);
         
@@ -72,10 +85,10 @@ export class VideoPlayer {
                 z: tvPosition.z,
                 w: 1,
             }, {
-                x: 0,
-                y: anchorRotation,
-                z: 0,
-                w: 1
+                x: targetQuaternion.x,
+                y: targetQuaternion.y,
+                z: targetQuaternion.z,
+                w: targetQuaternion.w              
             });
 
             this.videoLayer = await xrMediaBinding.createQuadLayer(this.videoElement, {
@@ -110,6 +123,21 @@ export class VideoPlayer {
 
     public async play() {
         await this.videoElement.play();
+    }
+
+    // percentage can be positive or negative i.e. (-10%) -10
+    public updateScreenSize(percentage: number) {
+        if(this.videoLayer) {
+            const currentW = this.videoLayer.width;
+            const currentH = this.videoLayer.height;
+            const newW = currentW - ((-percentage / 100) * currentW);
+            const newH = currentH - ((-percentage / 100) * currentH);
+
+            if(newW <= 0 || newH <= 0) return;
+
+            this.videoLayer.width = newW;
+            this.videoLayer.height = newH;
+        }
     }
 
     private assets: Array<PlayoutData> = [
