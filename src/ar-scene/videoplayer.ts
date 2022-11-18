@@ -36,8 +36,6 @@ export class VideoPlayer {
             });
         // }
         if (asset.headers) {
-            // const headers: {[key:string]:string} = {};
-
             this.videoPlayer?.getNetworkingEngine()?.
                 registerRequestFilter((type: shaka.net.NetworkingEngine.RequestType, request: shaka.extern.Request) => {
                     if (type === 2) {

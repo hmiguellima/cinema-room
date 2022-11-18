@@ -57,21 +57,7 @@ export class CinemaSessionAR {
             optionalFeatures: [ 'hand-tracking', 'layers' ]
         };
 
-        // const arButton = ARButton.createButton( this.renderer,  xrSessionConfig);
-        const arButton = document.createElement('button');
-        arButton.innerText = "Watch Now";
-        arButton.classList.add('ar-button');
-        arButton.addEventListener('click', async () => {
-            console.log("Clicked on AR Button");
-            console.log(this.remoteAsset);
-            // const session: XRSession = await (navigator as any).xr.requestSession( 'immersive-ar', xrSessionConfig );
-            // this.renderer.xr.setReferenceSpaceType('local');
-            // this.renderer.xr.setSession(session);
-
-            this.videoPlayer = new VideoPlayer(this.controllers!);
-            this.videoPlayer.init(this.remoteAsset);
-        });
-
+        const arButton = ARButton.createButton( this.renderer,  xrSessionConfig);
         document.body.appendChild(arButton);
         this.listenForExternalRequests(xrSessionConfig);
 
@@ -85,7 +71,7 @@ export class CinemaSessionAR {
         this.handleControllerEventsAnchors(this.controller0!);
         this.handleControllerEventsAnchors(this.controller1!);
 
-        this.controllers = new ControllersAR(this.renderer, this.scene, this.handleControllerEvent, this.controller0!, this.controller1!);
+        this.controllers = new ControllersAR(this.renderer, this.scene, this.handleControllerEvent, this.controller0!, this.controller1!, this.camera);
 
         window.addEventListener( 'resize', this.onWindowResize );
 
@@ -107,6 +93,10 @@ export class CinemaSessionAR {
     }) {
         window.addEventListener('message', async (e) => {
             this.remoteAsset = e.data;
+            console.log(this.remoteAsset);
+            const session: XRSession = await (navigator as any).xr.requestSession( 'immersive-ar', xrSessionConfig );
+            this.renderer.xr.setReferenceSpaceType('local');
+            this.renderer.xr.setSession(session);
         });
     }
 
@@ -205,10 +195,10 @@ export class CinemaSessionAR {
             const frame = await this.renderer.xr.getFrame();
             const anchorPose = await frame.getPose( anchor.anchorSpace, referenceSpace );
 
-            // TODO: Remove anchors placeholder
+            // Sample anchor placeholder. Set as transparent to not be shown on top of the screen.
             const boxMesh = new Mesh(
                 new BoxGeometry( 0.02, 0.02, 0.02 ),
-                new MeshBasicMaterial( { color: 0xffffff * Math.random() } )
+                new MeshBasicMaterial( { color: 0xffffff * Math.random(), transparent: true, opacity: 0 } )
             );
             boxMesh.matrixAutoUpdate = false;
             await boxMesh.matrix.fromArray( anchorPose.transform.matrix );

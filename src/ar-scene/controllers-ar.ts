@@ -1,4 +1,4 @@
-import { Group, WebGLRenderer, Scene } from "three";
+import { Group, WebGLRenderer, Scene, Camera, Vector3 } from "three";
 import { XRControllerModelFactory } from "three/examples/jsm/webxr/XRControllerModelFactory";
 import { XRHandModelFactory } from "three/examples/jsm/webxr/XRHandModelFactory";
 import { CanvasUI } from "../client/CanvasUI";
@@ -15,7 +15,7 @@ export class ControllersAR {
     private ui: CanvasUI;
 
     constructor(private renderer: WebGLRenderer, private scene: Scene, private evtHandler: ControllerEventHandler,
-        private controller1: Group, private controller2: Group) {
+        private controller1: Group, private controller2: Group, private camera: Camera) {
         // TODO: should use the real hands using passthrough.
         const controllerModelFactory = new XRControllerModelFactory();
         const handModelFactory = new XRHandModelFactory();
@@ -84,7 +84,20 @@ export class ControllersAR {
                 return;
             }
 
-            this.ui.mesh.visible = leftPinky.position.x - leftThumb.position.x > leftThumb.position.distanceTo(leftPinky.position) * 2 / 3;
+            let pp = new Vector3(leftPinky.position.x, leftPinky.position.y, leftPinky.position.z);
+            let tp = new Vector3(leftThumb.position.x, leftThumb.position.y, leftThumb.position.z);
+
+            const camera = this.camera;
+            pp.applyMatrix4(camera.matrixWorldInverse);
+            tp.applyMatrix4(camera.matrixWorldInverse);
+
+            const ui = this.ui.mesh;
+
+
+            ui.visible = pp.x - tp.x > leftThumb.position.distanceTo(leftPinky.position) * 2 / 3;
+
+            ui.rotation.y = Math.atan2( ( camera.position.x - ui.position.x ), ( camera.position.z - ui.position.z ) );
+
 
             if (this.ui.mesh.visible) {
                 const pos = leftPinky.position;
