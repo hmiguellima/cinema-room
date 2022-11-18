@@ -80,6 +80,10 @@ export class ControllersAR {
             const leftPinky = this.leftJoints['pinky-finger-tip'];
             const leftThumb = this.leftJoints['thumb-tip'];
 
+            if (!leftPinky) {
+                return;
+            }
+
             this.ui.mesh.visible = leftPinky.position.x - leftThumb.position.x > leftThumb.position.distanceTo(leftPinky.position) * 2 / 3;
 
             if (this.ui.mesh.visible) {
