@@ -92,11 +92,16 @@ export class CinemaSessionAR {
         optionalFeatures: string[];
     }) {
         window.addEventListener('message', async (e) => {
+            console.log("Received message: ", e.data);
             this.remoteAsset = e.data;
             console.log(this.remoteAsset);
+
             const session: XRSession = await (navigator as any).xr.requestSession( 'immersive-ar', xrSessionConfig );
             this.renderer.xr.setReferenceSpaceType('local');
             this.renderer.xr.setSession(session);
+
+            // this.videoPlayer = new VideoPlayer(this.controllers!);
+            // this.videoPlayer.init(this.remoteAsset);
         });
     }
 

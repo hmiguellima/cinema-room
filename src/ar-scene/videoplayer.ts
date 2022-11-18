@@ -25,16 +25,16 @@ export class VideoPlayer {
 
     public async init(remoteAsset?: PlayoutData) {
         const asset: PlayoutData = remoteAsset || this.assets[0];
-        // if (asset.drmUri) {
+        if (asset.drmUri) {
             this.videoPlayer.configure({
                 drm: {
                     servers: {
-                        // 'com.widevine.alpha': asset.drmUri
-                        'com.widevine.alpha': "https://cwip-shaka-proxy.appspot.com/no_auth"
+                        'com.widevine.alpha': asset.drmUri
+                        // 'com.widevine.alpha': "https://cwip-shaka-proxy.appspot.com/no_auth"
                     }
                 }
             });
-        // }
+        }
         if (asset.headers) {
             this.videoPlayer?.getNetworkingEngine()?.
                 registerRequestFilter((type: shaka.net.NetworkingEngine.RequestType, request: shaka.extern.Request) => {
@@ -48,8 +48,8 @@ export class VideoPlayer {
 
         console.log(">>> Video Asset: ", asset);
         setTimeout(async () => {
-            // await this.videoPlayer?.load(asset.streamUri);
-            await this.videoPlayer?.load("https://storage.googleapis.com/shaka-demo-assets/sintel-widevine/dash.mpd");
+            await this.videoPlayer?.load(asset.streamUri);
+            // await this.videoPlayer?.load("https://storage.googleapis.com/shaka-demo-assets/sintel-widevine/dash.mpd");
         }, 2500);
     }
 

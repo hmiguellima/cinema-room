@@ -84,6 +84,7 @@ export class ControllersAR {
                 return;
             }
 
+            /*
             let pp = new Vector3(leftPinky.position.x, leftPinky.position.y, leftPinky.position.z);
             let tp = new Vector3(leftThumb.position.x, leftThumb.position.y, leftThumb.position.z);
 
@@ -97,7 +98,9 @@ export class ControllersAR {
             ui.visible = pp.x - tp.x > leftThumb.position.distanceTo(leftPinky.position) * 2 / 3;
 
             ui.rotation.y = Math.atan2( ( camera.position.x - ui.position.x ), ( camera.position.z - ui.position.z ) );
+            */
 
+            this.ui.mesh.visible = leftPinky.position.x - leftThumb.position.x > leftThumb.position.distanceTo(leftPinky.position) * 2 / 3;
 
             if (this.ui.mesh.visible) {
                 const pos = leftPinky.position;
