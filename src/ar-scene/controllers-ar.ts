@@ -1,12 +1,8 @@
 import { Group, WebGLRenderer, Scene, Camera, Vector3, Object3D } from "three";
-import { XRControllerModelFactory } from "three/examples/jsm/webxr/XRControllerModelFactory";
-import { XRHandModelFactory } from "three/examples/jsm/webxr/XRHandModelFactory";
 import { CanvasUI } from "../client/CanvasUI";
 import { ControllerEventHandler, EventType } from "../client/controllers";
 
 export class ControllersAR {
-    private controllerGrip1?: Group;
-    private controllerGrip2?: Group;
     private hand1?: Group;
     private hand2?: Group;
     private leftJoints: any;
@@ -16,26 +12,12 @@ export class ControllersAR {
 
     constructor(private renderer: WebGLRenderer, private scene: Scene, private evtHandler: ControllerEventHandler,
         private controller1: Group, private controller2: Group, private camera: Camera) {
-        // TODO: should use the real hands using passthrough.
-        const controllerModelFactory = new XRControllerModelFactory();
-        const handModelFactory = new XRHandModelFactory();
 
-        // Hand 1
-        this.controllerGrip1 = this.renderer.xr.getControllerGrip(0);
-        this.controllerGrip1.add(controllerModelFactory.createControllerModel(this.controllerGrip1));
-        this.scene.add(this.controllerGrip1);
-
+        // Hands initialisation.
         this.hand1 = this.renderer.xr.getHand(0);
-        this.hand1.add(handModelFactory.createHandModel(this.hand1, 'mesh' as any));
         this.scene.add(this.hand1);
 
-        // Hand 2
-        this.controllerGrip2 = this.renderer.xr.getControllerGrip(1);
-        this.controllerGrip2.add( controllerModelFactory.createControllerModel(this.controllerGrip2));
-        this.scene.add(this.controllerGrip2);
-
         this.hand2 = this.renderer.xr.getHand(1);
-        this.hand2.add(handModelFactory.createHandModel(this.hand2, 'mesh' as any));
         this.scene.add(this.hand2);
 
         // handle controller/hand events
