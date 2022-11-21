@@ -1,4 +1,4 @@
-import { Group, WebGLRenderer, Scene, Camera, Vector3 } from "three";
+import { Group, WebGLRenderer, Scene, Camera, Vector3, Object3D } from "three";
 import { XRControllerModelFactory } from "three/examples/jsm/webxr/XRControllerModelFactory";
 import { XRHandModelFactory } from "three/examples/jsm/webxr/XRHandModelFactory";
 import { CanvasUI } from "../client/CanvasUI";
@@ -77,14 +77,13 @@ export class ControllersAR {
     public update = () => {
         if (!this.renderer.xr.isPresenting) return;
         if (this.leftJoints) {
-            const leftPinky = this.leftJoints['pinky-finger-tip'];
-            const leftThumb = this.leftJoints['thumb-tip'];
+            const leftPinky: Object3D = this.leftJoints['pinky-finger-tip'];
+            const leftThumb: Object3D = this.leftJoints['thumb-tip'];
 
             if (!leftPinky) {
                 return;
             }
 
-            /*
             let pp = new Vector3(leftPinky.position.x, leftPinky.position.y, leftPinky.position.z);
             let tp = new Vector3(leftThumb.position.x, leftThumb.position.y, leftThumb.position.z);
 
@@ -94,17 +93,12 @@ export class ControllersAR {
 
             const ui = this.ui.mesh;
 
-
             ui.visible = pp.x - tp.x > leftThumb.position.distanceTo(leftPinky.position) * 2 / 3;
-
             ui.rotation.y = Math.atan2( ( camera.position.x - ui.position.x ), ( camera.position.z - ui.position.z ) );
-            */
 
-            this.ui.mesh.visible = leftPinky.position.x - leftThumb.position.x > leftThumb.position.distanceTo(leftPinky.position) * 2 / 3;
-
-            if (this.ui.mesh.visible) {
-                const pos = leftPinky.position;
-                this.ui.mesh.position.set(pos.x + 0.2, pos.y, pos.z);
+            if (ui.visible) {
+                const np = leftPinky.position.project(camera).add(new Vector3(0.3, 0, 0)).unproject(camera);
+                this.ui.mesh.position.set(np.x, np.y, np.z);
             }
         }
         if (this.rightJoints && !this.rightIndex) {

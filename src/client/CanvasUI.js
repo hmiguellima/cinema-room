@@ -405,7 +405,7 @@ handleHand(indexFinger) {
 
     const intersects = this.raycaster.intersectObject(this.mesh);
     const meshPosition = this.mesh.getWorldPosition(this.tmpVector1);
-    const distance = Math.abs(meshPosition.z - fingerTip.z);
+    const distance = Math.abs(meshPosition.distanceTo(fingerTip));
 
     if (intersects.length > 0 && distance < 0.05) {
         this.hover(0, intersects[0].uv);
