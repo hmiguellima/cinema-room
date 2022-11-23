@@ -202,8 +202,8 @@ export class CinemaSessionAR {
 
             // Sample anchor placeholder. Set as transparent to not be shown on top of the screen.
             const boxMesh = new Mesh(
-                new BoxGeometry( 0.02, 0.02, 0.02 ),
-                new MeshBasicMaterial( { color: 0xffffff * Math.random(), transparent: true, opacity: 0 } )
+                new BoxGeometry( 0.2, 0.2, 0.2 ),
+                new MeshBasicMaterial( { color: 0xffffff * Math.random(), transparent: true, opacity: 1 } )
             );
             boxMesh.matrixAutoUpdate = false;
             await boxMesh.matrix.fromArray( anchorPose.transform.matrix );

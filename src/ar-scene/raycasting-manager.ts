@@ -5,16 +5,15 @@ export class RaycastingManager {
     private raycaster = new Raycaster();
     private lastVerticalHitCenter?: Vector3;
     private lastVerticalHitObject?: Object3D;
+    private cameraDirection = new Vector3();
 
     constructor(private controller: Group, private camera: Camera, private scene: Scene) {
     }
 
     public render = () => {
-        const touchOrigin = new Vector3().setFromMatrixPosition(this.controller.matrixWorld);
-        const cameraPosition = new Vector3().setFromMatrixPosition(this.camera.matrixWorld);
-        const directionFromCamera = touchOrigin.clone().sub(cameraPosition).normalize();
+        this.camera.getWorldDirection(this.cameraDirection);
 
-        this.raycaster.set(touchOrigin, directionFromCamera);
+        this.raycaster.set(this.camera.position, this.cameraDirection);
         const intersects = this.raycaster.intersectObjects( this.scene.children );
 
         if (intersects && intersects.length >= 1) {
