@@ -73,10 +73,7 @@ export class VideoPlayer {
             centerPosition.y = tvPosition.y;
             centerPosition.z = camera.position.z;
 
-            const rotationMatrix = new Matrix4();
-            const targetQuaternion = new Quaternion();
-            rotationMatrix.lookAt( centerPosition, tvPosition, tv.up );
-            targetQuaternion.setFromRotationMatrix( rotationMatrix );
+            const targetQuaternion = tv.quaternion;
 
             // const anchorRotation = Math.atan2( ( camera.position.x - tvPosition.x ), ( camera.position.z - tvPosition.z ) );
             

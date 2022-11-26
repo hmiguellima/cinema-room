@@ -1,4 +1,4 @@
-import { BoxGeometry, Camera, Group, HemisphereLight, Mesh, MeshBasicMaterial, MeshPhongMaterial, PerspectiveCamera, Quaternion, RingGeometry, Scene, WebGLRenderer, WebXRManager } from "three";
+import { BoxGeometry, Camera, Euler, Group, HemisphereLight, Mesh, MeshBasicMaterial, MeshPhongMaterial, PerspectiveCamera, Quaternion, RingGeometry, Scene, Vector3, WebGLRenderer, WebXRManager } from "three";
 import { ARButton } from "three/examples/jsm/webxr/ARButton";
 import { EventType } from "../client/controllers";
 import { throttle } from "../common/throttle";
@@ -202,19 +202,16 @@ export class CinemaSessionAR {
 
             // Sample anchor placeholder. Set as transparent to not be shown on top of the screen.
             const boxMesh = new Mesh(
-                new BoxGeometry( 0.2, 0.2, 0.2 ),
+                new BoxGeometry(0.5, 0.2, 0.1),
                 new MeshBasicMaterial( { color: 0xffffff * Math.random(), transparent: true, opacity: 1 } )
             );
-            boxMesh.matrixAutoUpdate = false;
-            await boxMesh.matrix.fromArray( anchorPose.transform.matrix );
-            
-            const cameraPosition = this.camera!.position;
+            boxMesh.position.setX(anchorPose.transform.position.x);
+            boxMesh.position.setY(anchorPose.transform.position.y);
+            boxMesh.position.setZ(anchorPose.transform.position.z);
+            boxMesh.setRotationFromQuaternion(anchorPose.transform.orientation);
+            boxMesh.rotateOnAxis(new Vector3(1, 0, 0), Math.PI / 2);
 
-            // Should face the camera:
-            const anchorRotation = Math.atan2( ( cameraPosition.x - boxMesh.position.x ), ( cameraPosition.z - boxMesh.position.z ) ); // Anchor should face the camera.
-            boxMesh.rotation.y = anchorRotation;
-
-            await this.scene?.add( boxMesh );
+            // this.scene?.add( boxMesh );
 
             if (this.videoPlayer === undefined) {
                 this.videoPlayer = new VideoPlayer(this.controllers!);
@@ -270,10 +267,9 @@ export class CinemaSessionAR {
                     console.log('**** creating anchor', anchorsId);
 
                     // Create an anchor in the wall.
+                    let __a = new Vector3(), anchorRotation = new Quaternion(), __b = new Vector3();
                     const anchorPosition = this.raycastingManager?.getLatestVerticalHitCenter();
-
-                    // const controllerRotation = new Quaternion().setFromEuler( controller.rotation );
-                    const anchorRotation = new Quaternion().setFromEuler( this.raycastingManager?.getLatestVerticalHitObject()?.rotation! );    
+                    this.raycastingManager?.getLatestVerticalHitObject()?.matrixWorld.decompose(__a, anchorRotation, __b);
 
                     const uuid = await this.renderer.xr.createAnchor( anchorPosition, anchorRotation, true );
                     persistentHandles.push( uuid );

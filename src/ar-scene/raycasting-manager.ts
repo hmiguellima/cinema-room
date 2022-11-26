@@ -14,18 +14,12 @@ export class RaycastingManager {
         this.camera.getWorldDirection(this.cameraDirection);
 
         this.raycaster.set(this.camera.position, this.cameraDirection);
-        const intersects = this.raycaster.intersectObjects( this.scene.children );
+        const plane = this.raycaster.intersectObjects(this.scene.children)[0]?.object;
 
-        if (intersects && intersects.length >= 1) {
-            intersects.forEach(i => {
-                if (intersects[0].object.name === 'plane-Vertical') {
-                    const center = this.getCenterPoint(i.object);
-
-                    this.lastVerticalHitCenter = center;
-                    this.lastVerticalHitObject = intersects[0].object;
-                    return;
-                }
-            })
+        if (plane?.name === 'plane-Vertical') {
+            const center = this.getCenterPoint(plane);
+            this.lastVerticalHitCenter = center;
+            this.lastVerticalHitObject = plane;
         }
     }
 
