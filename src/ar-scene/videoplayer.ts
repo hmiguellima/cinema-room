@@ -19,8 +19,6 @@ export class VideoPlayer {
 
         this.videoElement.addEventListener('play', this.onPlay);
         this.videoElement.addEventListener('pause', this.onPause);
-
-        document.body.appendChild(this.videoElement);
     }
 
     public async init(remoteAsset?: PlayoutData) {
@@ -47,6 +45,7 @@ export class VideoPlayer {
         }
 
         console.log(">>> Video Asset: ", asset);
+        this.controllers?.updateInfoText('loading...');
         setTimeout(async () => {
             await this.videoPlayer?.load(asset.streamUri);
             // await this.videoPlayer?.load("https://storage.googleapis.com/shaka-demo-assets/sintel-widevine/dash.mpd");
@@ -73,10 +72,7 @@ export class VideoPlayer {
             centerPosition.y = tvPosition.y;
             centerPosition.z = camera.position.z;
 
-            const targetQuaternion = tv.quaternion;
-
-            // const anchorRotation = Math.atan2( ( camera.position.x - tvPosition.x ), ( camera.position.z - tvPosition.z ) );
-            
+            const targetQuaternion = tv.quaternion;            
             const refSpace = renderer.xr.getReferenceSpace() as any;
             const xrMediaBinding = new XRMediaBinding(session);
             
@@ -107,6 +103,7 @@ export class VideoPlayer {
                 layers: [this.videoLayer, (renderer.xr as any).getBaseLayer()],
             } as any);
 
+            tv.visible = false;
             this.errorCount = 0;
         } catch (e) {
             console.log('**** showVideoPlayer error', JSON.stringify(e));
@@ -157,5 +154,6 @@ export class VideoPlayer {
     public destroy() {
         this.videoElement.removeEventListener('play', this.onPlay);
         this.videoElement.removeEventListener('pause', this.onPause);
+        this.videoPlayer.unload();
     }
 }

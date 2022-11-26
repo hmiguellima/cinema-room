@@ -24,14 +24,13 @@ export class CinemaSessionAR {
     private updateScreenSize?: (percentage: number) => void;
     private remoteAsset?: PlayoutData;
 
-    constructor() {
+    constructor(private sessionEndCallback: () => void) {
         this.init();
     }
 
     private async init() {
 
-        const container = document.createElement( 'div' );
-        document.body.appendChild( container );
+        const container = document.getElementById('container');
 
         this.scene = new Scene();
 
@@ -47,7 +46,7 @@ export class CinemaSessionAR {
         this.renderer.setPixelRatio( window.devicePixelRatio );
         this.renderer.setSize( window.innerWidth, window.innerHeight );
         this.renderer.xr.enabled = true;
-        container.appendChild( this.renderer.domElement );
+        container!.appendChild( this.renderer.domElement );
         this.renderer.setAnimationLoop(this.render);
 
         //
@@ -58,7 +57,7 @@ export class CinemaSessionAR {
         };
 
         const arButton = ARButton.createButton( this.renderer,  xrSessionConfig);
-        document.body.appendChild(arButton);
+        container!.appendChild(arButton);
         this.listenForExternalRequests(xrSessionConfig);
 
         this.controller0 = this.renderer.xr.getController( 0 );
@@ -66,10 +65,6 @@ export class CinemaSessionAR {
 
         this.controller1 = this.renderer.xr.getController( 1 );
         this.scene.add( this.controller1! );
-
-        // this.handleControllerEventsHitTest(this.controller0);
-        this.handleControllerEventsAnchors(this.controller0!);
-        this.handleControllerEventsAnchors(this.controller1!);
 
         this.controllers = new ControllersAR(this.renderer, this.scene, this.handleControllerEvent, this.controller0!, this.controller1!, this.camera);
 
@@ -99,14 +94,12 @@ export class CinemaSessionAR {
             const session: XRSession = await (navigator as any).xr.requestSession( 'immersive-ar', xrSessionConfig );
             this.renderer.xr.setReferenceSpaceType('local');
             this.renderer.xr.setSession(session);
-
-            // this.videoPlayer = new VideoPlayer(this.controllers!);
-            // this.videoPlayer.init(this.remoteAsset);
         });
     }
 
     private onDestroy = () => {
         this.destroy();
+        this.sessionEndCallback();
     }
 
     private onSessionStart = async (event: any) => {
@@ -124,6 +117,9 @@ export class CinemaSessionAR {
     }
 
     destroy() {
+        const container = document.getElementById('container');
+
+        container!.innerHTML = '';
         this.planeManager?.destroy();
         this.raycastingManager?.destroy();
         this.clearAnchors();
@@ -148,6 +144,9 @@ export class CinemaSessionAR {
                 break;
             case EventType.screen_size_decrease:
                 this.updateScreenSize?.(-10);
+                break;
+            case EventType.set_wall:
+                this.handleSelectWall();
                 break;
         }
     }
@@ -177,14 +176,7 @@ export class CinemaSessionAR {
     };
 
     private anchorChanged = (e: any) => {
-        const { anchor, pose } = e.data;
-        const anchorCube = this.anchorCubes.get( anchor );
-        if ( pose ) {
-            anchorCube.visible = true;
-            anchorCube.matrix.fromArray( pose.transform.matrix );
-        } else {
-            anchorCube.visible = false;
-        }
+        // console.log( "anchor changed", e.data )
     };
 
     private anchorsDetected = async (e: any) => {
@@ -202,8 +194,8 @@ export class CinemaSessionAR {
 
             // Sample anchor placeholder. Set as transparent to not be shown on top of the screen.
             const boxMesh = new Mesh(
-                new BoxGeometry(0.5, 0.2, 0.1),
-                new MeshBasicMaterial( { color: 0xffffff * Math.random(), transparent: true, opacity: 1 } )
+                new BoxGeometry(0.85, 0.5, 0.01),
+                new MeshBasicMaterial({color: 0, opacity: 1})
             );
             boxMesh.position.setX(anchorPose.transform.position.x);
             boxMesh.position.setY(anchorPose.transform.position.y);
@@ -211,7 +203,7 @@ export class CinemaSessionAR {
             boxMesh.setRotationFromQuaternion(anchorPose.transform.orientation);
             boxMesh.rotateOnAxis(new Vector3(1, 0, 0), Math.PI / 2);
 
-            // this.scene?.add( boxMesh );
+            this.scene?.add( boxMesh );
 
             if (this.videoPlayer === undefined) {
                 this.videoPlayer = new VideoPlayer(this.controllers!);
@@ -226,57 +218,43 @@ export class CinemaSessionAR {
         } );
     };
 
-    private handleControllerEventsAnchors(controller: Group) {
-        controller.addEventListener('selectend', async (event: any) => {
-            if (event.data.handedness === 'left') {
-                console.log('left hand detected');
-                return;
+    private async handleSelectWall() {
+        let __a = new Vector3(), anchorRotation = new Quaternion(), __b = new Vector3();
+        const anchorPosition = this.raycastingManager?.getLatestVerticalHitCenter();
+        const anchorsId = 'webxr_ar_anchors_handles';
+        const val = localStorage.getItem( anchorsId );
+        const persistentHandles = JSON.parse( val! ) || [];
+
+        if (anchorPosition === undefined || anchorRotation === undefined) {
+            return;
+        }
+
+        // Clear previous anchors.
+        if (persistentHandles.length >= 1) {
+            console.log('**** clearing all the anchors');
+
+            while( persistentHandles.length != 0 ) {
+                const handle = persistentHandles.pop();
+                await this.renderer.xr.deleteAnchor( handle );
+                localStorage.setItem( anchorsId, JSON.stringify( persistentHandles ) );
             }
 
-            // Uncomment this to create an anchor in controller/hand position.
-            // const controllerPosition = controller.position;
+            this.anchorCubes.forEach( ( cube ) => {
+                this.scene?.remove( cube );
+            } );
 
-            // Create an anchor in the wall.
-            const anchorPosition = this.raycastingManager?.getLatestVerticalHitCenter();
+            this.anchorCubes = new Map();
+        }
 
-            // const controllerRotation = new Quaternion().setFromEuler( controller.rotation );
-            const anchorRotation = new Quaternion().setFromEuler( this.raycastingManager?.getLatestVerticalHitObject()?.rotation! );
+        // Create a new anchor
+        console.log('**** creating anchor', anchorsId);
 
-            const anchorsId = 'webxr_ar_anchors_handles';
-            const val = localStorage.getItem( anchorsId );
-            const persistentHandles = JSON.parse( val! ) || [];
+        // Create an anchor in the wall.
+        this.raycastingManager?.getLatestVerticalHitObject()?.matrixWorld.decompose(__a, anchorRotation, __b);
 
-            // Clear the anchors.
-            if ( persistentHandles.length >= 1 ) {
-                console.log('**** clearing all the anchors');
-
-                while( persistentHandles.length != 0 ) {
-                    const handle = persistentHandles.pop();
-                    await this.renderer.xr.deleteAnchor( handle );
-                    await localStorage.setItem( anchorsId, JSON.stringify( persistentHandles ) );
-                }
-
-                this.anchorCubes.forEach( ( cube ) => {
-                    this.scene?.remove( cube );
-                } );
-
-                this.anchorCubes = new Map();
-            } else {
-                if (anchorPosition !== undefined && anchorRotation != undefined) {
-                    // Create a new anchor
-                    console.log('**** creating anchor', anchorsId);
-
-                    // Create an anchor in the wall.
-                    let __a = new Vector3(), anchorRotation = new Quaternion(), __b = new Vector3();
-                    const anchorPosition = this.raycastingManager?.getLatestVerticalHitCenter();
-                    this.raycastingManager?.getLatestVerticalHitObject()?.matrixWorld.decompose(__a, anchorRotation, __b);
-
-                    const uuid = await this.renderer.xr.createAnchor( anchorPosition, anchorRotation, true );
-                    persistentHandles.push( uuid );
-                    localStorage.setItem( anchorsId, JSON.stringify(persistentHandles) );
-                }
-            }
-        });
+        const uuid = await this.renderer.xr.createAnchor(anchorPosition, anchorRotation, true);
+        persistentHandles.push(uuid);
+        localStorage.setItem(anchorsId, JSON.stringify(persistentHandles));
     }
 
     private onWindowResize() {

@@ -1,3 +1,8 @@
 import { CinemaSessionAR } from "./cinema-session-ar";
 
-new CinemaSessionAR();
+
+function initLoop() {
+    new CinemaSessionAR(initLoop);
+}
+
+initLoop();

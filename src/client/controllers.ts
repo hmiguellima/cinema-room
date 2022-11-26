@@ -9,6 +9,7 @@ export enum EventType {
     exit,
     screen_size_increase,
     screen_size_decrease,
+    set_wall
 }
 
 export type ControllerEventHandler = (evt: EventType) => void;
