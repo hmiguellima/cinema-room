@@ -39,7 +39,7 @@ export class PlanesManager {
 
             if ( plane.orientation.toLowerCase() === 'horizontal') return;
 
-            console.log('*** plane detected', plane, ' - orientation: ', plane.orientation);
+            console.log('*** plane detected - orientation:', plane.orientation);
 
             this.planesAdded.add( plane );
 

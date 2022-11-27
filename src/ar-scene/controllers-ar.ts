@@ -3,9 +3,11 @@ import { CanvasUI } from "../client/CanvasUI";
 import { ControllerEventHandler, EventType } from "../client/controllers";
 
 const UI_PANEL_WIDTH = 0.280;
-const UI_TRANSLATE_VEC: Vector3 = new Vector3(UI_PANEL_WIDTH * 2, 0, 0);
+const UI_TRANSLATE_VEC: Vector3 = new Vector3(UI_PANEL_WIDTH, 0, 0);
 
 export class ControllersAR {
+    private controller1: Group;
+    private controller2: Group;
     private hand1?: Group;
     private hand2?: Group;
     private leftJoints: any;
@@ -15,17 +17,22 @@ export class ControllersAR {
     private pinkyPos: Vector3 = new Vector3();
     private thumbPos: Vector3 = new Vector3();
 
-    constructor(private renderer: WebGLRenderer, private scene: Scene, private evtHandler: ControllerEventHandler,
-        private controller1: Group, private controller2: Group, private camera: Camera) {
+    constructor(private renderer: WebGLRenderer, private scene: Scene, private evtHandler: ControllerEventHandler, private camera: Camera) {
+        // Controllers (base XRInput interface)
+        this.controller1 = this.renderer.xr.getController(0);
+        this.scene.add(this.controller1);
 
-        // Hands initialisation.
+        this.controller2 = this.renderer.xr.getController(1);
+        this.scene.add(this.controller2);
+
+        // Hands objects initialisation.
         this.hand1 = this.renderer.xr.getHand(0);
         this.scene.add(this.hand1);
 
         this.hand2 = this.renderer.xr.getHand(1);
         this.scene.add(this.hand2);
 
-        // handle controller/hand events
+        // handle controller events
         this.handleControllerEvents(this.controller1, this.hand1);
         this.handleControllerEvents(this.controller2, this.hand2);
 

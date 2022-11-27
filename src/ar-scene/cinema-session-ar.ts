@@ -5,7 +5,7 @@ import { throttle } from "../common/throttle";
 import { PlayoutData } from "../common/net-scheme";
 import { ControllersAR } from "./controllers-ar";
 import { PlanesManager } from "./planes-manager";
-import { RaycastingManager } from "./raycasting-manager";
+import { GazeManager } from "./gaze-manager";
 import { VideoPlayer } from "./videoplayer";
 
 export class CinemaSessionAR {
@@ -15,12 +15,10 @@ export class CinemaSessionAR {
     private session: any;
     private anchorCubes = new Map();
     private anchorsAdded = new Set();
-    private controller0?: Group;
-    private controller1?: Group;
     private videoPlayer?: VideoPlayer;
     private planeManager?: PlanesManager;
     private controllers?: ControllersAR;
-    private raycastingManager?: RaycastingManager;
+    private gazeManager?: GazeManager;
     private updateScreenSize?: (percentage: number) => void;
     private remoteAsset?: PlayoutData;
     private screenAnchor?: Vector3;
@@ -40,13 +38,11 @@ export class CinemaSessionAR {
 
         this.scene = new Scene();
 
-        this.camera = new PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 20 );
+        this.camera = new PerspectiveCamera(70, 2, 0.01, 20);
 
-        const light = new HemisphereLight( 0xffffff, 0xbbbbff, 1 );
-        light.position.set( 0.5, 1, 0.25 );
-        this.scene.add( light );
-
-        //
+        const light = new HemisphereLight(0xffffff, 0xbbbbff, 1);
+        light.position.set(0.5, 1, 0.25);
+        this.scene.add(light);
 
         this.renderer = new WebGLRenderer( { antialias: true, alpha: true } );
         this.renderer.setPixelRatio( window.devicePixelRatio );
@@ -62,19 +58,11 @@ export class CinemaSessionAR {
             optionalFeatures: [ 'hand-tracking', 'layers' ]
         };
 
-        const arButton = ARButton.createButton( this.renderer,  this.xrSessionConfig);
+        const arButton = ARButton.createButton(this.renderer,  this.xrSessionConfig);
         container!.appendChild(arButton);
         this.listenForExternalRequests();
 
-        this.controller0 = this.renderer.xr.getController( 0 );
-        this.scene.add( this.controller0! );
-
-        this.controller1 = this.renderer.xr.getController( 1 );
-        this.scene.add( this.controller1! );
-
-        this.controllers = new ControllersAR(this.renderer, this.scene, this.handleControllerEvent, this.controller0!, this.controller1!, this.camera);
-
-        // window.addEventListener('resize', this.onWindowResize);
+        this.controllers = new ControllersAR(this.renderer, this.scene, this.handleControllerEvent, this.camera);
 
         this.renderer.xr.addEventListener( 'sessionstart', this.onSessionStart);
 
@@ -84,8 +72,8 @@ export class CinemaSessionAR {
         // Init anchors.
         this.initAnchorsListeners();
 
-        // Init raycasting.
-        this.raycastingManager = new RaycastingManager(this.controller0!, this.camera, this.scene);
+        // Init gaze detection
+        this.gazeManager = new GazeManager(this.camera, this.scene);
     }
 
     private listenForExternalRequests() {
@@ -127,7 +115,7 @@ export class CinemaSessionAR {
 
         container!.innerHTML = '';
         this.planeManager?.destroy();
-        this.raycastingManager?.destroy();
+        this.gazeManager?.destroy();
         this.clearAnchorsListeners();
         this.videoPlayer?.destroy();
         this.session.removeEventListener('end', this.onDestroy);
@@ -257,7 +245,7 @@ export class CinemaSessionAR {
 
     private async handleSelectWall() {
         let __a = new Vector3(), anchorRotation = new Quaternion(), __b = new Vector3();
-        const anchorPosition = this.raycastingManager?.getLatestVerticalHitCenter();
+        const anchorPosition = this.gazeManager?.getLatestVerticalHitCenter();
         const anchorsId = 'webxr_ar_anchors_handles';
         const val = localStorage.getItem( anchorsId );
         const persistentHandles = JSON.parse( val! ) || [];
@@ -268,7 +256,7 @@ export class CinemaSessionAR {
             return;
         }
 
-        this.raycastingManager?.getLatestVerticalHitObject()?.matrixWorld.decompose(__a, anchorRotation, __b);
+        this.gazeManager?.getLatestVerticalHitObject()?.matrixWorld.decompose(__a, anchorRotation, __b);
 
         this.creatingAnchors = true;
 
@@ -313,7 +301,7 @@ export class CinemaSessionAR {
     private render = () => {
         if (!this.renderer.xr.isPresenting) return;
 
-        this.raycastingManager?.render();
+        this.gazeManager?.render();
         this.controllers?.update();
 
         this.renderer.render(this.scene, this.camera);
