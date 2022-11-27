@@ -28,7 +28,7 @@ export class ControllersAR {
             panelSize: { width: 0.280, height: 0.125},
             width: 334,
             height: 128,
-            opacity: 1,
+            opacity: 0.8,
             info: { type: "text", position:{ left: 6, top: 6 }, width: 320, height: 58, backgroundColor: "#aaa", fontColor: "#000", fontSize: 18 },
             pause: { type: "button", position:{ top: 70, left: 6 }, width: 40, height: 52, backgroundColor: "#bbb", fontColor: "#bb0", hover: "#fff", onSelect: () => this.evtHandler(EventType.pause)},
             play: { type: "button", position:{ top: 70, left: 60 }, width: 40, height: 52, backgroundColor: "#bbb", fontColor: "#bb0", hover: "#fff", onSelect: () => this.evtHandler(EventType.play) },

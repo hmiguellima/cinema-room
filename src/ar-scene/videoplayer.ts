@@ -8,7 +8,7 @@ export class VideoPlayer {
     private videoPlayer: Player;
     private videoLayer: XRQuadLayer | undefined;
 
-    constructor(private controllers: ControllersAR) {
+    constructor(private controllers: ControllersAR, private licenseReqDecorator: (request: shaka.extern.Request) => Promise<shaka.extern.Request>) {
         this.videoElement = document.createElement('video');
         this.videoElement.crossOrigin = 'anonymous';
         this.videoElement.preload = 'auto';
@@ -33,24 +33,36 @@ export class VideoPlayer {
                 }
             });
         }
-        if (asset.headers) {
+        if (asset.headers || asset.needsExternalSigning) {
             this.videoPlayer?.getNetworkingEngine()?.
-                registerRequestFilter((type: shaka.net.NetworkingEngine.RequestType, request: shaka.extern.Request) => {
+                registerRequestFilter(async (type: shaka.net.NetworkingEngine.RequestType, request: shaka.extern.Request) => {
+                    // License request
                     if (type === 2) {
-                        request.headers = asset.headers!;
-                        console.log(">>> License request headers: ", request.headers);
+                        if (asset.headers) {
+                            request.headers = {...asset.headers, ...request.headers};
+                        }
+                        if (asset.needsExternalSigning) {
+                            console.log('****signing request', request);
+                            const req = await this.licenseReqDecorator(request);
+                            request.headers = req.headers;
+                        }
+                        console.log('****license request headers', request.headers);
                     }
                 });
-
         }
 
         console.log(">>> Video Asset: ", asset);
         this.controllers?.updateInfoText('loading...');
-        setTimeout(async () => {
-            await this.videoPlayer?.load(asset.streamUri);
-            // await this.videoPlayer?.load("https://storage.googleapis.com/shaka-demo-assets/sintel-widevine/dash.mpd");
-        }, 2500);
+        this.videoPlayer.addEventListener('error', this.handleError);
+        await this.videoPlayer?.load(asset.streamUri);
+        await new Promise((resolve) => {
+            window.setTimeout(resolve, 1000);
+        });
     }
+
+    private handleError = (e: any) => {
+        console.log('***** Shaka error:', e);
+    } 
 
     private onPlay = () => {
         this.controllers?.updateInfoText('playing');
@@ -79,6 +91,7 @@ export class VideoPlayer {
             console.log(">>> showVideoPlayer: videoElement.play");
             await this.videoElement.play();
 
+            console.log(">>> showVideoPlayer: create media layer");
             let transform = new XRRigidTransform({
                 x: tvPosition.x,
                 y: tvPosition.y,
@@ -106,15 +119,7 @@ export class VideoPlayer {
             tv.visible = false;
             this.errorCount = 0;
         } catch (e) {
-            console.log('**** showVideoPlayer error', JSON.stringify(e));
-
-            // TODO: fix this hack
-            this.errorCount++;
-            if (this.errorCount <=2) {
-                setTimeout(() => this.showVideoPlayer(renderer, session, tv, camera), 500);
-            } else {
-                this.errorCount = 0;
-            }
+            console.log('**** showVideoPlayer error', e);
         }
     }
 
@@ -154,6 +159,7 @@ export class VideoPlayer {
     public destroy() {
         this.videoElement.removeEventListener('play', this.onPlay);
         this.videoElement.removeEventListener('pause', this.onPause);
+        this.videoPlayer.removeEventListener('error', this.handleError);
         this.videoPlayer.unload();
     }
 }

@@ -57,6 +57,7 @@ export type PlayoutData = {
     layout: StereoLayout;
     default?: boolean;
     headers?: {[k: string]: string};
+    needsExternalSigning?: boolean;
 };
 
 export type VideoPlayer = {

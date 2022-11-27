@@ -90,12 +90,14 @@ export class CinemaSessionAR {
     }) {
         window.addEventListener('message', async (e) => {
             console.log("Received message: ", e.data);
-            this.remoteAsset = e.data;
-            console.log(this.remoteAsset);
-
-            const session: XRSession = await (navigator as any).xr.requestSession( 'immersive-ar', xrSessionConfig );
-            this.renderer.xr.setReferenceSpaceType('local');
-            this.renderer.xr.setSession(session);
+            if (e.data && e.data.type === 'asset') {
+                this.remoteAsset = e.data.asset;
+                console.log(this.remoteAsset);
+    
+                const session: XRSession = await (navigator as any).xr.requestSession( 'immersive-ar', xrSessionConfig );
+                this.renderer.xr.setReferenceSpaceType('local');
+                this.renderer.xr.setSession(session);
+            }
         });
     }
 
@@ -211,17 +213,33 @@ export class CinemaSessionAR {
             this.scene?.add( boxMesh );
 
             if (this.videoPlayer === undefined) {
-                this.videoPlayer = new VideoPlayer(this.controllers!);
-                this.videoPlayer.init(this.remoteAsset);
+                this.videoPlayer = new VideoPlayer(this.controllers!, this.handleLicenseReq);
+                await this.videoPlayer.init(this.remoteAsset);
             }
 
             this.updateScreenSize = throttle((percent: number) => this.videoPlayer!.updateScreenSize(percent), 200);
 
+            console.log('**** showVideoPlayer');
             this.videoPlayer.showVideoPlayer(this.renderer, this.session, boxMesh, this.camera!);
 
             this.anchorCubes.set( anchor, boxMesh );
         } );
     };
+
+    private async handleLicenseReq(req: shaka.extern.Request): Promise<shaka.extern.Request> {
+        console.log('**** Sending decorateLicense request');
+        window.parent.postMessage({type: 'decorateLicense', decorateLicense: req});
+        return new Promise((resolve) => {
+            const listener = (event: any) => {
+                if (event.data.type === 'licenseRequest') {
+                    console.log('**** received decorated license', event.data.licenseRequest);
+                    window.removeEventListener('message', listener);
+                    resolve(event.data.licenseRequest);
+                }
+            };
+            window.addEventListener('message', listener);
+        });
+    }
 
     private async handleSelectWall() {
         let __a = new Vector3(), anchorRotation = new Quaternion(), __b = new Vector3();
