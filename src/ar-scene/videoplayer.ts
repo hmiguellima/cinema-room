@@ -42,16 +42,16 @@ export class VideoPlayer {
                             request.headers = {...asset.headers, ...request.headers};
                         }
                         if (asset.needsExternalSigning) {
-                            console.log('****signing request', request);
+                            console.log('****signing request', JSON.stringify(request));
                             const req = await this.licenseReqDecorator(request);
                             request.headers = req.headers;
                         }
-                        console.log('****license request headers', request.headers);
+                        console.log('****license request headers', JSON.stringify(request.headers));
                     }
                 });
         }
 
-        console.log(">>> Video Asset: ", asset);
+        console.log(">>> Video Asset: ", JSON.stringify(asset));
         this.controllers?.updateInfoText('loading...');
         this.videoPlayer.addEventListener('error', this.handleError);
         await this.videoPlayer?.load(asset.streamUri);
@@ -124,7 +124,7 @@ export class VideoPlayer {
     }
 
     public async pause() {
-        await this.videoElement.pause();
+        this.videoElement.pause();
     }
 
     public async play() {

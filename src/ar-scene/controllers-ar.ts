@@ -2,6 +2,9 @@ import { Group, WebGLRenderer, Scene, Camera, Vector3, Object3D } from "three";
 import { CanvasUI } from "../client/CanvasUI";
 import { ControllerEventHandler, EventType } from "../client/controllers";
 
+const UI_PANEL_WIDTH = 0.280;
+const UI_TRANSLATE_VEC: Vector3 = new Vector3(UI_PANEL_WIDTH * 2, 0, 0);
+
 export class ControllersAR {
     private hand1?: Group;
     private hand2?: Group;
@@ -9,6 +12,8 @@ export class ControllersAR {
     private rightJoints: any;
     private rightIndex: any;
     private ui: CanvasUI;
+    private pinkyPos: Vector3 = new Vector3();
+    private thumbPos: Vector3 = new Vector3();
 
     constructor(private renderer: WebGLRenderer, private scene: Scene, private evtHandler: ControllerEventHandler,
         private controller1: Group, private controller2: Group, private camera: Camera) {
@@ -25,7 +30,7 @@ export class ControllersAR {
         this.handleControllerEvents(this.controller2, this.hand2);
 
         const uiConfig = {
-            panelSize: { width: 0.280, height: 0.125},
+            panelSize: { width: UI_PANEL_WIDTH, height: 0.125},
             width: 334,
             height: 128,
             opacity: 0.8,
@@ -68,8 +73,10 @@ export class ControllersAR {
                 return;
             }
 
-            let pp = new Vector3(leftPinky.position.x, leftPinky.position.y, leftPinky.position.z);
-            let tp = new Vector3(leftThumb.position.x, leftThumb.position.y, leftThumb.position.z);
+            const pp = this.pinkyPos;
+            const tp = this.thumbPos;
+            pp.copy(leftPinky.position);
+            tp.copy(leftThumb.position);
 
             const camera = this.camera;
             pp.applyMatrix4(camera.matrixWorldInverse);
@@ -81,7 +88,7 @@ export class ControllersAR {
             ui.rotation.y = Math.atan2( ( camera.position.x - ui.position.x ), ( camera.position.z - ui.position.z ) );
 
             if (ui.visible) {
-                const np = leftPinky.position.project(camera).add(new Vector3(0.3, 0, 0)).unproject(camera);
+                const np = leftPinky.position.project(camera).add(UI_TRANSLATE_VEC).unproject(camera);
                 this.ui.mesh.position.set(np.x, np.y, np.z);
             }
         }

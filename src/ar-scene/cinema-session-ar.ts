@@ -25,6 +25,10 @@ export class CinemaSessionAR {
     private remoteAsset?: PlayoutData;
     private screenAnchor?: Vector3;
     private creatingAnchors = false;
+    private xrSessionConfig?: {
+        requiredFeatures: string[];
+        optionalFeatures: string[];
+    };
 
     constructor(private sessionEndCallback: () => void) {
         this.init();
@@ -53,14 +57,14 @@ export class CinemaSessionAR {
 
         //
 
-        const xrSessionConfig = {
+        this.xrSessionConfig = {
             requiredFeatures: ['anchors', 'plane-detection'], // TODO: add hit-test when working on Quest.
             optionalFeatures: [ 'hand-tracking', 'layers' ]
         };
 
-        const arButton = ARButton.createButton( this.renderer,  xrSessionConfig);
+        const arButton = ARButton.createButton( this.renderer,  this.xrSessionConfig);
         container!.appendChild(arButton);
-        this.listenForExternalRequests(xrSessionConfig);
+        this.listenForExternalRequests();
 
         this.controller0 = this.renderer.xr.getController( 0 );
         this.scene.add( this.controller0! );
@@ -70,7 +74,7 @@ export class CinemaSessionAR {
 
         this.controllers = new ControllersAR(this.renderer, this.scene, this.handleControllerEvent, this.controller0!, this.controller1!, this.camera);
 
-        window.addEventListener( 'resize', this.onWindowResize );
+        // window.addEventListener('resize', this.onWindowResize);
 
         this.renderer.xr.addEventListener( 'sessionstart', this.onSessionStart);
 
@@ -84,21 +88,19 @@ export class CinemaSessionAR {
         this.raycastingManager = new RaycastingManager(this.controller0!, this.camera, this.scene);
     }
 
-    private listenForExternalRequests(xrSessionConfig: {
-        requiredFeatures: string[];
-        optionalFeatures: string[];
-    }) {
-        window.addEventListener('message', async (e) => {
-            console.log("Received message: ", e.data);
-            if (e.data && e.data.type === 'asset') {
-                this.remoteAsset = e.data.asset;
-                console.log(this.remoteAsset);
-    
-                const session: XRSession = await (navigator as any).xr.requestSession( 'immersive-ar', xrSessionConfig );
-                this.renderer.xr.setReferenceSpaceType('local');
-                this.renderer.xr.setSession(session);
-            }
-        });
+    private listenForExternalRequests() {
+        window.addEventListener('message', this.handleExternalPlayoutRequest);
+    }
+
+    private handleExternalPlayoutRequest = async (e: MessageEvent<any>) => {
+        console.log('Received message:', JSON.stringify(e.data));
+        if (e.data && e.data.type === 'asset') {
+            this.remoteAsset = e.data.asset;
+
+            const session: XRSession = await (navigator as any).xr.requestSession('immersive-ar', this.xrSessionConfig);
+            this.renderer.xr.setReferenceSpaceType('local');
+            this.renderer.xr.setSession(session);
+        }
     }
 
     private onDestroy = () => {
@@ -129,6 +131,7 @@ export class CinemaSessionAR {
         this.clearAnchorsListeners();
         this.videoPlayer?.destroy();
         this.session.removeEventListener('end', this.onDestroy);
+        window.removeEventListener('message', this.handleExternalPlayoutRequest);
     }
 
     private handleControllerEvent = (evt: EventType) => {
@@ -229,11 +232,22 @@ export class CinemaSessionAR {
     private async handleLicenseReq(req: shaka.extern.Request): Promise<shaka.extern.Request> {
         console.log('**** Sending decorateLicense request');
         window.parent.postMessage({type: 'decorateLicense', decorateLicense: req});
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
+            let waitingForResponse = true;
+
+            const timeout = window.setTimeout(() => {
+                if (waitingForResponse) {
+                    window.removeEventListener('message', listener);
+                    reject('handleLicenseReq:timeout');
+                }
+            }, 5000);
+
             const listener = (event: any) => {
                 if (event.data.type === 'licenseRequest') {
-                    console.log('**** received decorated license', event.data.licenseRequest);
+                    console.log('**** received decorated license', JSON.stringify(event.data.licenseRequest));
+                    waitingForResponse = false;
                     window.removeEventListener('message', listener);
+                    window.clearTimeout(timeout);
                     resolve(event.data.licenseRequest);
                 }
             };
@@ -287,12 +301,14 @@ export class CinemaSessionAR {
         }
     }
 
+    /*
     private onWindowResize() {
         (this.camera as any).aspect = window.innerWidth / window.innerHeight;
         (this.camera as any).updateProjectionMatrix();
 
         this.renderer.setSize( window.innerWidth, window.innerHeight );
     }
+    */
 
     private render = () => {
         if (!this.renderer.xr.isPresenting) return;
