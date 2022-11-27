@@ -1,6 +1,5 @@
 import { Camera, Group, Object3D, Raycaster, Scene, Vector3 } from "three";
 
-// TODO: Ideally the video player should be pinnable in one of the walls detected by the PlanesManager.
 export class RaycastingManager {
     private raycaster = new Raycaster();
     private lastVerticalHitCenter?: Vector3;

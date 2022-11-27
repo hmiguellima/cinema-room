@@ -1,4 +1,4 @@
-import { BoxGeometry, Camera, Euler, Group, HemisphereLight, Mesh, MeshBasicMaterial, MeshPhongMaterial, PerspectiveCamera, Quaternion, RingGeometry, Scene, Vector3, WebGLRenderer, WebXRManager } from "three";
+import { BoxGeometry, Camera, Group, HemisphereLight, Mesh, MeshBasicMaterial, PerspectiveCamera, Quaternion, Scene, Vector3, WebGLRenderer, WebXRManager } from "three";
 import { ARButton } from "three/examples/jsm/webxr/ARButton";
 import { EventType } from "../client/controllers";
 import { throttle } from "../common/throttle";
@@ -7,6 +7,7 @@ import { ControllersAR } from "./controllers-ar";
 import { PlanesManager } from "./planes-manager";
 import { RaycastingManager } from "./raycasting-manager";
 import { VideoPlayer } from "./videoplayer";
+import { AnchorsManager } from "./anchors-manager";
 
 export class CinemaSessionAR {
     private renderer: any;
@@ -29,6 +30,7 @@ export class CinemaSessionAR {
         requiredFeatures: string[];
         optionalFeatures: string[];
     };
+    private anchorsManager?: AnchorsManager;
 
     constructor(private sessionEndCallback: () => void) {
         this.init();
@@ -82,6 +84,7 @@ export class CinemaSessionAR {
         this.planeManager = new PlanesManager(this.renderer, this.scene);
 
         // Init anchors.
+        this.anchorsManager = new AnchorsManager(this.renderer);
         this.initAnchorsListeners();
 
         // Init raycasting.
@@ -128,6 +131,7 @@ export class CinemaSessionAR {
         container!.innerHTML = '';
         this.planeManager?.destroy();
         this.raycastingManager?.destroy();
+        this.anchorsManager?.destroy();
         this.clearAnchorsListeners();
         this.videoPlayer?.destroy();
         this.session.removeEventListener('end', this.onDestroy);
@@ -160,31 +164,12 @@ export class CinemaSessionAR {
 
     private initAnchorsListeners() {
         // TODO: move anchors to separate class.
-
-        this.renderer.xr.addEventListener( 'anchoradded', this.anchorAdded);
-        this.renderer.xr.addEventListener( 'anchorremoved', this.anchorRemoved);
-        this.renderer.xr.addEventListener( 'anchorposechanged', this.anchorChanged);
         this.renderer.xr.addEventListener( 'anchorsdetected', this.anchorsDetected);
     }
 
     private clearAnchorsListeners() {
-        this.renderer.xr.removeEventListener( 'anchoradded', this.anchorAdded);
-        this.renderer.xr.removeEventListener( 'anchorremoved', this.anchorRemoved);
-        this.renderer.xr.removeEventListener( 'anchorposechanged', this.anchorChanged);
         this.renderer.xr.removeEventListener( 'anchorsdetected', this.anchorsDetected);
     }
-
-    private anchorAdded = () => {
-        // console.log( "anchor added", e.data )
-    };
-
-    private anchorRemoved = () => {
-        // console.log( "anchor removed", e.data )
-    };
-
-    private anchorChanged = (e: any) => {
-        // console.log( "anchor changed", e.data )
-    };
 
     private anchorsDetected = async (e: any) => {
         const detectedAnchors = e.data;

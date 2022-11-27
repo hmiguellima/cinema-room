@@ -17,6 +17,10 @@ export class VideoPlayer {
     
         this.videoPlayer = new Player(this.videoElement);
 
+        this.subscribeToEvents();
+    }
+
+    private subscribeToEvents() {
         this.videoElement.addEventListener('play', this.onPlay);
         this.videoElement.addEventListener('pause', this.onPause);
     }
@@ -72,7 +76,6 @@ export class VideoPlayer {
         this.controllers?.updateInfoText('paused');
     }
 
-    private errorCount = 0;
     public async showVideoPlayer(renderer: WebGLRenderer, session: any, tv: Object3D, camera: Camera) {
         try
         {
@@ -117,7 +120,6 @@ export class VideoPlayer {
             } as any);
 
             tv.visible = false;
-            this.errorCount = 0;
         } catch (e) {
             console.log('**** showVideoPlayer error', e);
         }
@@ -156,10 +158,14 @@ export class VideoPlayer {
         }
     ];
 
-    public destroy() {
+    private unsubscribeFromEvents() {
         this.videoElement.removeEventListener('play', this.onPlay);
         this.videoElement.removeEventListener('pause', this.onPause);
         this.videoPlayer.removeEventListener('error', this.handleError);
+    }
+
+    public destroy() {
+        this.unsubscribeFromEvents();
         this.videoPlayer.unload();
     }
 }
