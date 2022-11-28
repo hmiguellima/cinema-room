@@ -8,6 +8,7 @@ import { PlanesManager } from "./planes-manager";
 import { GazeManager } from "./gaze-manager";
 import { VideoPlayer } from "./videoplayer";
 import { AnchorsManager } from "./anchors-manager";
+import { UIManager } from "./ui-manager";
 
 export class CinemaSessionAR {
     private renderer: any;
@@ -29,6 +30,7 @@ export class CinemaSessionAR {
         optionalFeatures: string[];
     };
     private anchorsManager?: AnchorsManager;
+    private UIManager?: UIManager;
 
     constructor(private sessionEndCallback: () => void) {
         this.init();
@@ -77,6 +79,9 @@ export class CinemaSessionAR {
 
         // Init gaze detection
         this.gazeManager = new GazeManager(this.camera, this.scene);
+
+        // Init UI manager.
+        this.UIManager = new UIManager(this.scene);
     }
 
     private listenForExternalRequests() {
@@ -290,5 +295,7 @@ export class CinemaSessionAR {
         this.controllers?.update();
 
         this.renderer.render(this.scene, this.camera);
+
+        this.UIManager?.render();
     }
 }

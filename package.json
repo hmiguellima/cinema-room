@@ -21,7 +21,8 @@
     "shaka-player": "^3.2.0",
     "socket.io": "^4.4.0",
     "socket.io-client": "^4.4.0",
-    "three": "davidezordan/three.js-hackathon"
+    "three": "davidezordan/three.js-hackathon",
+    "three-mesh-ui": "^6.5.2"
   },
   "devDependencies": {
     "@types/express": "^4.17.2",
