@@ -2,12 +2,10 @@ import { Mesh,
     CanvasTexture, 
     MeshBasicMaterial, 
     PlaneGeometry, 
-    Matrix4, 
-    Raycaster, 
-    Scene, 
+    Scene,
+    Raycaster,
     WebGLRenderer, 
     Vector3, 
-    IcosahedronBufferGeometry 
 } from 'three';
 
 /*An element is defined by 
@@ -30,6 +28,7 @@ border: width color style
 */
 class CanvasUI{
 constructor(content, config){
+    this.raycaster = new Raycaster();
     this.tmpVector1 = new Vector3();
 	this.tmpVector2 = new Vector3();
 	this.tmpVector3 = new Vector3();
@@ -125,109 +124,15 @@ constructor(content, config){
                 console.warn("CanvasUI: button, scroll or input-text in the config but no renderer")
             }else{
                 this.renderer = config.renderer;
-                this.initControllers();
             }
         }
     }
     
-    this.selectedElements = [ undefined, undefined ];
-    this.selectPressed = [ false, false ];
-    this.scrollData = [ undefined, undefined ];
-    this.intersects = [ undefined, undefined ];
+    this.selectedElement = undefined;
     
     this.needsUpdate = true;
     
     this.update();
-}
-
-getIntersectY( index ){
-    const height = this.config.height || 512;
-    const intersect = this.intersects[index];
-    if (intersect === undefined ) return 0;
-    if ( intersect.uv === undefined ) return 0;
-    return (1 - intersect.uv.y) * height;
-}
-
-initControllers(){
-    this.vec3 = new Vector3();
-    this.mat4 = new Matrix4();
-    this.raycaster = new Raycaster();
-    
-    const self = this;
-    
-    function onSelect( event ) {     
-        const index = (event.target === self.controller) ? 0 : 1;
-        const elm = self.selectedElements[index];
-        if ( elm !== undefined ){
-            if ( elm.type == "button"){
-                self.select( index );
-            }else if ( elm.type == "input-text"){
-                if ( self.keyboard ){
-                    if ( self.keyboard.visible ){
-                        self.keyboard.linkedUI = undefined;
-                        self.keyboard.linkedText = undefined;
-                        self.keyboard.linkedElement = undefined;
-                        self.keyboard.visible = false;
-                    }else{
-                        self.keyboard.linkedUI = self;
-                        let name;
-                        Object.entries( self.config ).forEach( ([prop, value]) => {
-                            if ( value == elm ) name = prop;
-                        });
-                        const y = (0.5-((elm.position.y + elm.height + self.config.body.padding )/self.config.height)) * self.panelSize.height;
-                        const h = Math.max( self.panelSize.width, self.panelSize.height )/2;
-                        self.keyboard.position.set( 0, -h/1.5 - y, 0.1 );
-                        self.keyboard.linkedText = self.content[ name ];
-                        self.keyboard.linkedName = name;
-                        self.keyboard.linkedElement = elm;
-                        self.keyboard.visible = true;
-                    }
-                }
-            }
-        }
-    }
-    
-    function onSelectStart( event ){
-        const index = (event.target === self.controller) ? 0 : 1;
-        self.selectPressed[index] = true;
-        if ( self.selectedElements[index] !== undefined && self.selectedElements[index].overflow == "scroll"){
-            const elm = self.selectedElements[index];
-            self.scrollData[index] = { scrollY: elm.scrollY, rayY: self.getIntersectY(index) };
-        }
-    }
-    
-    function onSelectEnd( event ){
-        const index = (event.target === self.controller) ? 0 : 1;
-        self.selectPressed[index] = false;
-        if ( self.selectedElements[index] !== undefined && self.selectedElements[index].overflow == "scroll"){
-            self.scrollData[index] = undefined;
-        }
-    }
-    
-    this.controller = this.renderer.xr.getController( 0 );
-    this.controller.addEventListener( 'select', onSelect );
-    this.controller.addEventListener( 'selectstart', onSelectStart );
-    this.controller.addEventListener( 'selectend', onSelectEnd );
-    this.controller1 = this.renderer.xr.getController( 1 );
-    this.controller1.addEventListener( 'select', onSelect );
-    this.controller1.addEventListener( 'selectstart', onSelectStart );
-    this.controller1.addEventListener( 'selectend', onSelectEnd );
-      
-    if ( this.scene ){
-        const radius = 0.015;
-        const geometry = new IcosahedronBufferGeometry( radius );
-        const material = new MeshBasicMaterial( { color: 0x0000aa } );
-
-        const mesh1 = new Mesh( geometry, material );
-        mesh1.visible = false;
-        this.scene.add( mesh1 );
-        const mesh2 = new Mesh( geometry, material );
-        mesh2.visible = false;
-        this.scene.add( mesh2 );
-
-        this.intersectMesh = [ mesh1, mesh2 ];
-    }
-    
 }
 
 setClip( elm ){
@@ -335,10 +240,10 @@ updateConfig( name, property, value ){
     this.needsUpdate = true;
 }
 
-hover( index = 0, uv ){
+hover( uv ){
     if (uv === undefined){
-        if (this.selectedElements[index] !== undefined){
-            this.selectedElements[index] = undefined;
+        if (this.selectedElement !== undefined){
+            this.selectedElement = undefined;
             this.needsUpdate = true;
         }
     }else{
@@ -347,51 +252,26 @@ hover( index = 0, uv ){
         //console.log( `hover uv:${uv.x.toFixed(2)},${uv.y.toFixed(2)}>>texturePos:${x.toFixed(0)}, ${y.toFixed(0)}`);
         const elm = this.getElementAtLocation( x, y );
         if (elm===null){
-            if ( this.selectedElements[index] !== undefined ){
-                this.selectedElements[index] = undefined;
+            if ( this.selectedElement !== undefined ){
+                this.selectedElement = undefined;
                 this.needsUpdate = true;
             }
-        }else if( this.selectedElements[index] !== elm ){
-            this.selectedElements[index] = elm;
+        }else if( this.selectedElement !== elm ){
+            this.selectedElement = elm;
             this.needsUpdate = true;
         }
     }
-     
 }
 
-select( index = 0 ){
-    if (this.selectedElements[index] !== undefined){
-        const elm = this.selectedElements[index];
+select(){
+    if (this.selectedElement !== undefined){
+        const elm = this.selectedElement;
         if (elm.onSelect) elm.onSelect();
         if (elm.type === 'input-text'){
             this.keyboard.mesh.visible = true;
         }else{
-            this.selectedElements[index] = undefined;
+            this.selectedElement = undefined;
         }
-    }
-}
-
-scroll( index ){
-    if ( this.selectedElements[index] === undefined ){
-        if (this.intersectMesh) this.intersectMesh[index].visible = false;
-        return;
-    } 
-    if ( this.selectedElements[index].overflow !== 'scroll') return;
-    const elm = this.selectedElements[index];
-    if ( this.selectPressed[index] ){ 
-        const scrollData = this.scrollData[index];
-        if (scrollData !== undefined){
-            if (this.intersectMesh){
-                this.intersectMesh[index].visible = true;
-                this.intersectMesh[index].position.copy( this.intersects[index].point );
-            }
-            const rayY = this.getIntersectY( index );
-            const offset = rayY - scrollData.rayY;
-            elm.scrollY = Math.min( Math.max( elm.minScrollY, scrollData.scrollY + offset), 0 );
-            this.needsUpdate = true;
-        }
-    }else{
-        if (this.intersectMesh) this.intersectMesh[index].visible = false;
     }
 }
 
@@ -406,44 +286,18 @@ handleHand(indexFinger) {
     const intersected = this.raycaster.intersectObject(this.mesh)[0];
 
     if (intersected && intersected.distance < 0.05) {
-        this.hover(0, intersected.uv);
-        this.intersects[0] = intersected;
-        if (this.selectedElements[0] && intersected.distance < 0.01) {
-            this.selectedElements[0].onSelect?.();
+        this.hover(intersected.uv);
+        if (this.selectedElement && intersected.distance < 0.01) {
+            this.selectedElement.onSelect?.();
         }
     } else {
-        this.hover(0);
-        this.intersects[0] = undefined;
-    }
-}
-
-handleController( controller, index ){
-    this.mat4.identity().extractRotation( controller.matrixWorld );
-
-    this.raycaster.ray.origin.setFromMatrixPosition( controller.matrixWorld );
-    this.raycaster.ray.direction.set( 0, 0, - 1 ).applyMatrix4( this.mat4 );
-
-    const intersects = this.raycaster.intersectObject( this.mesh );
-
-    if (intersects.length>0){
-        this.hover( index, intersects[0].uv );
-        this.intersects[index] = intersects[0];
-        this.scroll( index );
-    }else{
-        this.hover( index );
-        this.intersects[index] = undefined;
-        this.scroll( index );
+        this.hover();
     }
 }
 
 update(){    
     if (this.mesh===undefined) return;
         
-    /*
-    if ( this.controller ) this.handleController( this.controller, 0 );
-    if ( this.controller1 ) this.handleController( this.controller1, 1 );
-    */
-
     if (this.rightIndex) this.handleHand(this.rightIndex);
 
     if ( this.keyboard && this.keyboard.visible ) this.keyboard.update();
@@ -481,7 +335,7 @@ update(){
             self.setClip( config );
             
             const svgPath = content.toLowerCase().startsWith("<path>");
-            const hover = ((self.selectedElements[0] !== undefined && this.selectedElements[0] === config)||(self.selectedElements[1] !== undefined && this.selectedElements[1] === config));
+            const hover = self.selectedElement !== undefined && this.selectedElement === config;
             
             if ( config.backgroundColor !== undefined){
                 if (hover && config.type== "button" && config.hover !== undefined){
