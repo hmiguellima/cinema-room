@@ -98,8 +98,7 @@ export class UIManager {
             state: 'selected',
             attributes: selectedAttributes,
             onSet: () => {
-                // currentMesh = ( currentMesh + 1 ) % 3;
-                // showMesh( currentMesh );
+                console.log('**** next selected');
             }
         } );
 
@@ -115,11 +114,7 @@ export class UIManager {
             state: 'selected',
             attributes: selectedAttributes,
             onSet: () => {
-    
-                // currentMesh -= 1;
-                // if ( currentMesh < 0 ) currentMesh = 2;
-                // showMesh( currentMesh );
-    
+                console.log('**** previous selected'); 
             }
         } );
 
