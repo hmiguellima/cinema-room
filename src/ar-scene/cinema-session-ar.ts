@@ -1,6 +1,6 @@
 import { BoxGeometry, Camera, Euler, Group, HemisphereLight, Mesh, MeshBasicMaterial, MeshPhongMaterial, PerspectiveCamera, Quaternion, RingGeometry, Scene, Vector3, WebGLRenderer, WebXRManager } from "three";
 import { ARButton } from "three/examples/jsm/webxr/ARButton";
-import { EventType } from "../client/controllers";
+import { EventType } from "./controllers-ar";
 import { throttle } from "../common/throttle";
 import { PlayoutData } from "../common/net-scheme";
 import { ControllersAR } from "./controllers-ar";

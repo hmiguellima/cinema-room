@@ -48,8 +48,6 @@ constructor(content, config){
         }
     }
     this.config = (config===undefined) ? defaultconfig : config;
-
-    const CanvasKeyboard = this.config.keyboard;
     
     if (this.config.width === undefined) this.config.width = 512;
     if (this.config.height === undefined) this.config.height = 512;
@@ -106,12 +104,6 @@ constructor(content, config){
     const inputs = Object.values( this.config ).filter( ( value )=>{
         return  value.type === "input-text";
     });
-    if ( inputs.length > 0 && CanvasKeyboard ){
-        this.keyboard = new CanvasKeyboard(this.panelSize.width, this.config.renderer );
-        const mesh = this.keyboard.mesh;
-        mesh.position.set( 0, -0.3, 0.2 );
-        this.mesh.add( this.keyboard.mesh );
-    }
     
     if (content === undefined){
         this.content = { body: "" };
@@ -185,8 +177,8 @@ setRotation(x, y, z){
     this.mesh.rotation.set(x, y, z);
 }
 
-setRightIndex(rightIndex) {
-    this.rightIndex = rightIndex;
+setFingerJoints(joints) {
+    this.fingerJoints = joints;
 }
 
 updateElement( name, content ){
@@ -267,17 +259,16 @@ select(){
     if (this.selectedElement !== undefined){
         const elm = this.selectedElement;
         if (elm.onSelect) elm.onSelect();
-        if (elm.type === 'input-text'){
-            this.keyboard.mesh.visible = true;
-        }else{
-            this.selectedElement = undefined;
-        }
+        this.selectedElement = undefined;
     }
 }
 
-handleHand(indexFinger) {
-    const fingerPhalanx = indexFinger.phalanx.getWorldPosition(this.tmpVector1);
-    const fingerTip = indexFinger.tip.getWorldPosition(this.tmpVector2);
+handleHand() {
+    const rightIndexTip = this.fingerJoints['index-finger-tip'];
+    const rightIndexPhalanxDistal = this.fingerJoints['index-finger-phalanx-distal'];
+
+    const fingerPhalanx = rightIndexPhalanxDistal.getWorldPosition(this.tmpVector1);
+    const fingerTip = rightIndexTip.getWorldPosition(this.tmpVector2);
     const fingerDir = this.tmpVector3.subVectors(fingerTip, fingerPhalanx);
 
     this.raycaster.ray.origin.copy(fingerPhalanx);
@@ -298,10 +289,8 @@ handleHand(indexFinger) {
 update(){    
     if (this.mesh===undefined) return;
         
-    if (this.rightIndex) this.handleHand(this.rightIndex);
+    if (this.fingerJoints) this.handleHand();
 
-    if ( this.keyboard && this.keyboard.visible ) this.keyboard.update();
-    
     if ( !this.needsUpdate ) return;
     
     let context = this.context;

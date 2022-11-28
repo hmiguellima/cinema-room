@@ -1,6 +1,16 @@
 import { Group, WebGLRenderer, Scene, Camera, Vector3, Object3D } from "three";
 import { CanvasUI } from "../client/CanvasUI";
-import { ControllerEventHandler, EventType } from "../client/controllers";
+
+export enum EventType {
+    play,
+    pause,
+    exit,
+    screen_size_increase,
+    screen_size_decrease,
+    set_wall
+}
+
+export type ControllerEventHandler = (evt: EventType) => void;
 
 const UI_PANEL_WIDTH = 0.280;
 const UI_TRANSLATE_VEC: Vector3 = new Vector3(UI_PANEL_WIDTH, 0, 0);
@@ -12,7 +22,6 @@ export class ControllersAR {
     private hand2?: Group;
     private leftJoints: any;
     private rightJoints: any;
-    private rightIndex: any;
     private ui: CanvasUI;
     private pinkyPos: Vector3 = new Vector3();
     private thumbPos: Vector3 = new Vector3();
@@ -99,11 +108,8 @@ export class ControllersAR {
                 this.ui.mesh.position.set(np.x, np.y, np.z);
             }
         }
-        if (this.rightJoints && !this.rightIndex) {
-            const rightIndexTip = this.rightJoints['index-finger-tip'];
-            const rightIndexPhalanxDistal = this.rightJoints['index-finger-phalanx-distal'];
-            this.rightIndex = {tip: rightIndexTip, phalanx: rightIndexPhalanxDistal};
-            this.ui?.setRightIndex(this.rightIndex);
+        if (this.rightJoints) {
+            this.ui?.setFingerJoints(this.rightJoints);
         }
 
         if (this.ui.mesh.visible) {
