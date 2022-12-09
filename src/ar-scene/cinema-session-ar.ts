@@ -1,32 +1,39 @@
 import { BoxGeometry, Camera, Euler, Group, HemisphereLight, Mesh, MeshBasicMaterial, MeshPhongMaterial, PerspectiveCamera, Quaternion, RingGeometry, Scene, Vector3, WebGLRenderer, WebXRManager } from "three";
 import { ARButton } from "three/examples/jsm/webxr/ARButton";
 import { EventType } from "./controllers-ar";
-import { throttle } from "../common/throttle";
 import { PlayoutData } from "../common/net-scheme";
 import { ControllersAR } from "./controllers-ar";
 import { PlanesManager } from "./planes-manager";
 import { GazeManager } from "./gaze-manager";
 import { VideoPlayer } from "./videoplayer";
 
+const AR_SCREEN_ANCHORS_STATE = 'cinema_room_ar_screen_anchors';
+
 export class CinemaSessionAR {
     private renderer: any;
     private scene?: Scene;
     private camera?: Camera;
     private session: any;
-    private anchorCubes = new Map();
     private anchorsAdded = new Set();
     private videoPlayer?: VideoPlayer;
     private planeManager?: PlanesManager;
     private controllers?: ControllersAR;
     private gazeManager?: GazeManager;
-    private updateScreenSize?: (percentage: number) => void;
     private remoteAsset?: PlayoutData;
-    private screenAnchor?: Vector3;
+    private screenPosition?: Vector3;
     private creatingAnchors = false;
     private xrSessionConfig?: {
         requiredFeatures: string[];
         optionalFeatures: string[];
     };
+    private anchorMetadata?: {
+        id: string;
+        zoom: number;
+        translateX: number;
+        translateY: number;
+        translateZ: number;
+    };
+    private anchorCube?: Mesh;
 
     constructor(private sessionEndCallback: () => void) {
         this.init();
@@ -50,8 +57,6 @@ export class CinemaSessionAR {
         this.renderer.xr.enabled = true;
         container!.appendChild( this.renderer.domElement );
         this.renderer.setAnimationLoop(this.render);
-
-        //
 
         this.xrSessionConfig = {
             requiredFeatures: ['anchors', 'plane-detection'], // TODO: add hit-test when working on Quest.
@@ -96,14 +101,25 @@ export class CinemaSessionAR {
         this.sessionEndCallback();
     }
 
+    private saveAnchorMetadata() {
+        if (!this.anchorMetadata) return;
+        localStorage.setItem(AR_SCREEN_ANCHORS_STATE, JSON.stringify(this.anchorMetadata));
+    }
+
+    private restoreAnchorMetadata() {
+        const val = localStorage.getItem(AR_SCREEN_ANCHORS_STATE);
+        this.anchorMetadata = JSON.parse(val!);
+    }
+
     private onSessionStart = async (event: any) => {
-        this.camera?.position.set( 0, 0, 0 );
+        this.camera?.position.set(0, 0, 0);
 
-        const val = localStorage.getItem( 'webxr_ar_anchors_handles' );
-        const persistentHandles = JSON.parse( val! ) || [];
+        const val = localStorage.getItem(AR_SCREEN_ANCHORS_STATE);
+        const persistentAnchors = JSON.parse(val!) || [];
 
-        for (const uuid of persistentHandles) {
-            this.renderer.xr.restoreAnchor( uuid );
+        this.restoreAnchorMetadata();
+        if (this.anchorMetadata) {
+            this.renderer.xr.restoreAnchor(this.anchorMetadata.id);
         }
 
         this.session = (event.target as WebXRManager).getSession();
@@ -122,6 +138,20 @@ export class CinemaSessionAR {
         window.removeEventListener('message', this.handleExternalPlayoutRequest);
     }
 
+    private updateScreenZoom(zoom?: number) {
+        if (!this.anchorMetadata || !zoom) return;
+        this.anchorMetadata.zoom = zoom;
+        this.saveAnchorMetadata();
+    }
+
+    private updateScreenTranslation(translation?: Vector3) {
+        if (!this.anchorMetadata || !translation) return;
+        this.anchorMetadata.translateX = translation.x;
+        this.anchorMetadata.translateY = translation.y;
+        this.anchorMetadata.translateZ = translation.z;
+        this.saveAnchorMetadata();
+    }
+
     private handleControllerEvent = (evt: EventType) => {
         switch (evt) {
             case EventType.pause:
@@ -135,11 +165,23 @@ export class CinemaSessionAR {
                 this.session?.end();
                 break;
             case EventType.screen_size_increase:
-                this.updateScreenSize?.(10);
+                this.updateScreenZoom(this.videoPlayer?.updateScreenSize(10));
                 break;
             case EventType.screen_size_decrease:
-                this.updateScreenSize?.(-10);
+                this.updateScreenZoom(this.videoPlayer?.updateScreenSize(-10));
                 break;
+            case EventType.move_screen_right:
+                this.updateScreenTranslation(this.videoPlayer?.translateScreenPos(0.1, 0, 0));
+                break;
+            case EventType.move_screen_left:
+                this.updateScreenTranslation(this.videoPlayer?.translateScreenPos(-0.1, 0, 0));
+                break;
+            case EventType.move_screen_up:
+                this.updateScreenTranslation(this.videoPlayer?.translateScreenPos(0, 0.1, 0));
+                break;
+            case EventType.move_screen_down:
+                this.updateScreenTranslation(this.videoPlayer?.translateScreenPos(0, -0.1, 0));
+                break;    
             case EventType.set_wall:
                 this.handleSelectWall();
                 break;
@@ -179,18 +221,22 @@ export class CinemaSessionAR {
 
         if (detectedAnchors?.length === 0) return;
 
-        detectedAnchors.forEach( async (anchor: any) => {
-            if ( this.anchorsAdded.has( anchor ) ) return;
+        detectedAnchors.forEach(async (anchor: any) => {
+            if (this.anchorsAdded.has(anchor)) return;
 
             console.log('New anchor detected');
+            if (!this.anchorMetadata) {
+                throw 'Expected anchor metadata but none found';
+            }
 
-            this.anchorsAdded.add( anchor );
+            this.anchorsAdded.add(anchor);
+            const anchorZoom = this.anchorMetadata.zoom;
+            const anchorTranslation = new Vector3(this.anchorMetadata.translateX, this.anchorMetadata.translateY, this.anchorMetadata.translateZ);
 
             const referenceSpace = this.renderer.xr.getReferenceSpace();
             const frame = await this.renderer.xr.getFrame();
-            const anchorPose = await frame.getPose( anchor.anchorSpace, referenceSpace );
+            const anchorPose = await frame.getPose(anchor.anchorSpace, referenceSpace);
 
-            // Sample anchor placeholder. Set as transparent to not be shown on top of the screen.
             const boxMesh = new Mesh(
                 new BoxGeometry(0.85, 0.5, 0.01),
                 new MeshBasicMaterial({color: 0, opacity: 1})
@@ -201,19 +247,16 @@ export class CinemaSessionAR {
             boxMesh.setRotationFromQuaternion(anchorPose.transform.orientation);
             boxMesh.rotateOnAxis(new Vector3(1, 0, 0), Math.PI / 2);
 
-            this.scene?.add( boxMesh );
+            this.scene?.add(boxMesh);
+            this.anchorCube = boxMesh;
 
             if (this.videoPlayer === undefined) {
                 this.videoPlayer = new VideoPlayer(this.controllers!, this.handleLicenseReq);
                 await this.videoPlayer.init(this.remoteAsset);
             }
 
-            this.updateScreenSize = throttle((percent: number) => this.videoPlayer!.updateScreenSize(percent), 200);
-
             console.log('**** showVideoPlayer');
-            this.videoPlayer.showVideoPlayer(this.renderer, this.session, boxMesh, this.camera!);
-
-            this.anchorCubes.set( anchor, boxMesh );
+            this.videoPlayer.showVideoPlayer(this.renderer, this.session, boxMesh, anchorZoom, anchorTranslation);
         } );
     };
 
@@ -246,13 +289,10 @@ export class CinemaSessionAR {
     private async handleSelectWall() {
         let __a = new Vector3(), anchorRotation = new Quaternion(), __b = new Vector3();
         const anchorPosition = this.gazeManager?.getLatestVerticalHitCenter();
-        const anchorsId = 'webxr_ar_anchors_handles';
-        const val = localStorage.getItem( anchorsId );
-        const persistentHandles = JSON.parse( val! ) || [];
 
         if (this.creatingAnchors
             || anchorPosition === undefined
-            || (this.screenAnchor && anchorPosition.equals(this.screenAnchor))) {
+            || (this.screenPosition && anchorPosition.equals(this.screenPosition))) {
             return;
         }
 
@@ -261,42 +301,41 @@ export class CinemaSessionAR {
         this.creatingAnchors = true;
 
         try {
-            // Clear previous anchor
-            if (persistentHandles.length >= 1) {
+            // For now we only allow the screen to anchor to a single place
+            // but in the future it would be cool to setup different places
+            // and then have a way to move the screen across the previously
+            // defined places
+            if (this.anchorMetadata) {
                 console.log('**** clearing all the anchors');
 
-                while( persistentHandles.length != 0 ) {
-                    const handle = persistentHandles.pop();
-                    await this.renderer.xr.deleteAnchor( handle );
-                    localStorage.setItem( anchorsId, JSON.stringify( persistentHandles ) );
+                await this.renderer.xr.deleteAnchor(this.anchorMetadata.id);
+                localStorage.removeItem(AR_SCREEN_ANCHORS_STATE);
+
+                if (this.anchorCube) {
+                    this.scene?.remove(this.anchorCube);
+                    this.anchorCube = undefined;
                 }
-
-                this.anchorCubes.forEach( ( cube ) => {
-                    this.scene?.remove( cube );
-                } );
-
-                this.anchorCubes = new Map();
             }
 
             // Create a new anchor
-            console.log('**** creating anchor', anchorsId);
-            const uuid = await this.renderer.xr.createAnchor(anchorPosition, anchorRotation, true);
-            persistentHandles.push(uuid);
-            localStorage.setItem(anchorsId, JSON.stringify(persistentHandles));
-            this.screenAnchor = anchorPosition;
+            console.log('**** creating anchor');
+            this.anchorMetadata = {
+                id: '',
+                zoom: 100,
+                translateX: 0,
+                translateY: 0,
+                translateZ: 0
+            };
+            this.anchorMetadata.id = await this.renderer.xr.createAnchor(anchorPosition, anchorRotation, true);
+            this.saveAnchorMetadata();
+            this.screenPosition = anchorPosition;
+        } catch (e) {
+            this.anchorMetadata = undefined;
+            throw e;
         } finally {
             this.creatingAnchors = false;
         }
     }
-
-    /*
-    private onWindowResize() {
-        (this.camera as any).aspect = window.innerWidth / window.innerHeight;
-        (this.camera as any).updateProjectionMatrix();
-
-        this.renderer.setSize( window.innerWidth, window.innerHeight );
-    }
-    */
 
     private render = () => {
         if (!this.renderer.xr.isPresenting) return;

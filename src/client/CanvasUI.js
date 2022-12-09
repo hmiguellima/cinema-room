@@ -2,9 +2,7 @@ import { Mesh,
     CanvasTexture, 
     MeshBasicMaterial, 
     PlaneGeometry, 
-    Scene,
     Raycaster,
-    WebGLRenderer, 
     Vector3, 
 } from 'three';
 
@@ -62,7 +60,7 @@ constructor(content, config){
     if (body.fontColor === undefined) body.fontColor = '#fff';
     
     Object.entries( this.config ).forEach( ( [ name, value]) => {
-        if ( typeof(value) === 'object' && name !== 'panelSize' && !(value instanceof WebGLRenderer) && !(value instanceof Scene) ){
+        if ( typeof(value) === 'object' && name !== 'panelSize' ) {
             const pos = (value.position!==undefined) ? value.position : { x: 0, y: 0 };
             
             if (pos.left !== undefined && pos.x === undefined ) pos.x = pos.left;
@@ -98,9 +96,7 @@ constructor(content, config){
     
     this.texture = new CanvasTexture(canvas);
     this.mesh.material.map = this.texture;
-    
-    this.scene = this.config.scene;
-    
+        
     const inputs = Object.values( this.config ).filter( ( value )=>{
         return  value.type === "input-text";
     });
@@ -110,14 +106,6 @@ constructor(content, config){
         this.config.body.type = "text";
     }else{
         this.content = content;
-        const btns = Object.values(this.config).filter( (value) => { return value.type === "button" || value.overflow === "scroll" || value.type === "input-text" });
-        if (btns.length>0){
-            if ( config === undefined || config.renderer === undefined ){
-                console.warn("CanvasUI: button, scroll or input-text in the config but no renderer")
-            }else{
-                this.renderer = config.renderer;
-            }
-        }
     }
     
     this.selectedElement = undefined;
@@ -207,7 +195,7 @@ get panel(){
 getElementAtLocation( x, y ){
     const self = this;
     const elms = Object.entries( this.config ).filter( ([ name, elm ]) => {
-        if (typeof elm === 'object' && name !== 'panelSize' && name !== 'body' && !(elm instanceof WebGLRenderer) && !(elm instanceof Scene)){
+        if (typeof elm === 'object' && name !== 'panelSize' && name !== 'body'){
             const pos = elm.position;
             const width = (elm.width !== undefined) ? elm.width : self.config.width;
             const height = (elm.height !== undefined) ? elm.height : self.config.height;

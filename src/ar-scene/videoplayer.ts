@@ -7,6 +7,12 @@ export class VideoPlayer {
     private videoElement: HTMLVideoElement;
     private videoPlayer: Player;
     private videoLayer: XRQuadLayer | undefined;
+    private tvQuaternion?: Quaternion;
+    private tvPosition = new Vector3();
+    private translateVec = new Vector3(0, 0, 0);
+    private zoomPercentage = 100;
+    private defaultWidth = 0.54;
+    private defaultHeight = 0.3;
 
     constructor(private controllers: ControllersAR, private licenseReqDecorator: (request: shaka.extern.Request) => Promise<shaka.extern.Request>) {
         this.videoElement = document.createElement('video');
@@ -72,52 +78,71 @@ export class VideoPlayer {
         this.controllers?.updateInfoText('paused');
     }
 
-    private errorCount = 0;
-    public async showVideoPlayer(renderer: WebGLRenderer, session: any, tv: Object3D, camera: Camera) {
+    private getAdjustedScreenSize() {
+        const width = (this.zoomPercentage / 100) * this.defaultWidth;
+        const height = (this.zoomPercentage / 100) * this.defaultHeight;
+        return {
+            width,
+            height
+        }
+    }
+
+    private getMediaLayerTransform() {
+        const position = new Vector3().copy(this.tvPosition);
+        const correctedTranslation = new Vector3().copy(this.translateVec);
+        correctedTranslation.applyQuaternion(this.tvQuaternion!);
+        position.add(correctedTranslation);
+        return new XRRigidTransform({
+            x: position.x,
+            y: position.y,
+            z: position.z,
+            w: 1,
+        }, {
+            x: this.tvQuaternion?.x,
+            y: this.tvQuaternion?.y,
+            z: this.tvQuaternion?.z,
+            w: this.tvQuaternion?.w              
+        });
+    }
+
+    public async showVideoPlayer(renderer: WebGLRenderer, session: any, tv: Object3D, 
+        defaultZoom = 100, defaultTranslationVec = new Vector3(0, 0, 0)) {
         try
         {
-            const tvPosition = new Vector3();
-            tv.getWorldPosition(tvPosition);
+            this.tvQuaternion = tv.quaternion;            
+            this.tvPosition = tv.getWorldPosition(this.tvPosition);
+            this.translateVec.copy(defaultTranslationVec);
+            this.zoomPercentage = defaultZoom;
 
-            const centerPosition = new Vector3();
-            centerPosition.x = camera.position.x;
-            centerPosition.y = tvPosition.y;
-            centerPosition.z = camera.position.z;
+            const transform = this.getMediaLayerTransform();
+            const screenSize = this.getAdjustedScreenSize();
 
-            const targetQuaternion = tv.quaternion;            
-            const refSpace = renderer.xr.getReferenceSpace() as any;
-            const xrMediaBinding = new XRMediaBinding(session);
-            
-            console.log(">>> showVideoPlayer: videoElement.play");
-            await this.videoElement.play();
-
-            console.log(">>> showVideoPlayer: create media layer");
-            let transform = new XRRigidTransform({
-                x: tvPosition.x,
-                y: tvPosition.y,
-                z: tvPosition.z,
-                w: 1,
-            }, {
-                x: targetQuaternion.x,
-                y: targetQuaternion.y,
-                z: targetQuaternion.z,
-                w: targetQuaternion.w              
-            });
-
-            this.videoLayer = await xrMediaBinding.createQuadLayer(this.videoElement, {
-                space: refSpace,
-                // layout: 'stereo-left-right',
-                transform: transform,
-                width: 0.54,
-                height: 0.3,
-            });
-
-            session.updateRenderState({
-                layers: [this.videoLayer, (renderer.xr as any).getBaseLayer()],
-            } as any);
+            if (!this.videoLayer) {
+                const refSpace = renderer.xr.getReferenceSpace() as any;
+                const xrMediaBinding = new XRMediaBinding(session);
+                
+                console.log(">>> showVideoPlayer: videoElement.play");
+                await this.videoElement.play();
+    
+                console.log(">>> showVideoPlayer: create media layer");
+                this.videoLayer = xrMediaBinding.createQuadLayer(this.videoElement, {
+                    space: refSpace,
+                    // layout: 'stereo-left-right',
+                    transform: transform,
+                    width: screenSize.width,
+                    height: screenSize.height,
+                });
+    
+                session.updateRenderState({
+                    layers: [this.videoLayer, (renderer.xr as any).getBaseLayer()],
+                } as any);    
+            } else {
+                this.videoLayer.transform = transform;
+                this.videoLayer.width = screenSize.width;
+                this.videoLayer.height = screenSize.height;
+            }
 
             tv.visible = false;
-            this.errorCount = 0;
         } catch (e) {
             console.log('**** showVideoPlayer error', e);
         }
@@ -133,17 +158,26 @@ export class VideoPlayer {
 
     // percentage can be positive or negative i.e. (-10%) -10
     public updateScreenSize(percentage: number) {
-        if(this.videoLayer) {
-            const currentW = this.videoLayer.width;
-            const currentH = this.videoLayer.height;
-            const newW = currentW - ((-percentage / 100) * currentW);
-            const newH = currentH - ((-percentage / 100) * currentH);
-
-            if(newW <= 0 || newH <= 0) return;
-
-            this.videoLayer.width = newW;
-            this.videoLayer.height = newH;
+        if (!this.videoLayer) {
+            return this.zoomPercentage;
         }
+        this.zoomPercentage = Math.max(10, this.zoomPercentage + percentage);
+        const newSize = this.getAdjustedScreenSize();
+        this.videoLayer.width = newSize.width;
+        this.videoLayer.height = newSize.height;
+
+        return this.zoomPercentage;
+    }
+
+    public translateScreenPos(x: number, y: number, z: number) {
+        if (!this.videoLayer) {
+            return this.translateVec;
+        }
+        this.translateVec.add(new Vector3(x, y, z));
+        let transform = this.getMediaLayerTransform();
+        this.videoLayer.transform = transform;
+
+        return this.translateVec;
     }
 
     private assets: Array<PlayoutData> = [
