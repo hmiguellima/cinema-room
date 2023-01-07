@@ -1,4 +1,4 @@
-import { rgbToHsl } from './utils';
+import { rgbToHsl } from '../utils';
 
 export interface ShakaThumbnail {
     imageHeight: number,

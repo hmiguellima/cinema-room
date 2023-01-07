@@ -10,7 +10,7 @@ export class GazeManager {
     constructor(private camera: Camera, private scene: Scene) {
     }
 
-    public render = () => {
+    public update() {
         this.camera.getWorldDirection(this.cameraDirection);
 
         this.raycaster.set(this.camera.position, this.cameraDirection);

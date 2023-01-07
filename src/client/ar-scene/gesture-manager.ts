@@ -1,5 +1,5 @@
 import { Group } from "three";
-import { VideoPlayer } from "./videoplayer";
+import { VideoPlayer } from "../videoplayer";
 
 export class GestureManager {
     constructor(private controller0: Group, private controller1: Group, private videoPlayer: VideoPlayer) {

@@ -1,7 +1,12 @@
 import { Player } from "shaka-player";
-import { Camera, Matrix4, Object3D, Quaternion, Vector3, WebGLRenderer } from "three";
+import { Object3D, Quaternion, Vector3, WebGLRenderer } from "three";
 import { PlayoutData } from "../common/net-scheme";
-import { ControllersAR } from "./controllers-ar";
+
+export type IPlayerEventHandlers = {
+    onLoading(): void;
+    onPlay(): void;
+    onPause(): void;
+}
 
 export class VideoPlayer {
     private videoElement: HTMLVideoElement;
@@ -14,7 +19,7 @@ export class VideoPlayer {
     private defaultWidth = 0.54;
     private defaultHeight = 0.3;
 
-    constructor(private controllers: ControllersAR, private licenseReqDecorator: (request: shaka.extern.Request) => Promise<shaka.extern.Request>) {
+    constructor(private eventHandlers: IPlayerEventHandlers, private licenseReqDecorator: (request: shaka.extern.Request) => Promise<shaka.extern.Request>) {
         this.videoElement = document.createElement('video');
         this.videoElement.crossOrigin = 'anonymous';
         this.videoElement.preload = 'auto';
@@ -58,7 +63,7 @@ export class VideoPlayer {
         }
 
         console.log(">>> Video Asset: ", JSON.stringify(asset));
-        this.controllers?.updateInfoText('loading...');
+        this.eventHandlers.onLoading?.();
         this.videoPlayer.addEventListener('error', this.handleError);
         await this.videoPlayer?.load(asset.streamUri);
         await new Promise((resolve) => {
@@ -71,11 +76,11 @@ export class VideoPlayer {
     } 
 
     private onPlay = () => {
-        this.controllers?.updateInfoText('playing');
+        this.eventHandlers.onPlay?.();
     }
 
     private onPause = () => {
-        this.controllers?.updateInfoText('paused');
+        this.eventHandlers.onPause?.();
     }
 
     private getAdjustedScreenSize() {
