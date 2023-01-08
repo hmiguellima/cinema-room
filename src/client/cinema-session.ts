@@ -8,7 +8,7 @@ export type XRSessionConfig = {
 }
 
 export interface ICreateStartXRSession {
-    createButton(renderer: any, sessionConfig: XRSessionConfig): HTMLElement;
+    createButton(renderer: WebGLRenderer, sessionConfig: XRSessionConfig): HTMLElement;
     requestSession(sessionConfig: XRSessionConfig): Promise<XRSession>;
 }
 

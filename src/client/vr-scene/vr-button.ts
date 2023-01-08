@@ -1,5 +1,7 @@
+import { WebGLRenderer } from "three";
+
 export class VRButton {
-	static createButton(renderer: any, sessionInit: any) {
+	static createButton(renderer: WebGLRenderer, sessionInit: any) {
 		const container = document.createElement('span');
 
 		function createEnterVrButton() {
@@ -7,12 +9,13 @@ export class VRButton {
 			let currentSession:any  = null;
 
 			function onSessionStarted(session: XRSession) {
-				session.addEventListener('end', onSessionEnded );
+				session.addEventListener('end', onSessionEnded);
 				button.textContent = 'EXIT ROOM';
 				currentSession = session;
+				renderer.xr.setSession(session as any);
 			}
 
-			function onSessionEnded( /*event*/ ) {
+			function onSessionEnded(/*event*/) {
 				currentSession.removeEventListener('end', onSessionEnded );
 				button.textContent = 'ENTER ROOM';
 				currentSession = null;
@@ -21,9 +24,7 @@ export class VRButton {
 			button.style.cursor = 'pointer';
 			button.style.left = 'calc(50% - 50px)';
 			button.style.width = '100px';
-
-			button.textContent = 'INITIALISING ROOM...';
-			button.disabled = true;
+			button.textContent = 'ENTER ROOM';
 
 			button.onmouseenter = function () {
 				button.style.opacity = '1.0';

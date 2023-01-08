@@ -53,6 +53,13 @@ export class CinemaSessionVR extends CinemaSession {
         // we need to rotate the room
         this.room.rotateY(Math.PI);
         this.moveToSeat('seat_1');
+    }
+
+    protected postStart(): void {
+        if (!this.tv) {
+            this.onError('TV object not found');
+            return;
+        }
         this.setupVideoPlayer(this.tv, 100, new Vector3(0, 0, 0));
     }
 

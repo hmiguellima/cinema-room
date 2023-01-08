@@ -14,8 +14,6 @@ function initLoop() {
     session.init();
 }
 
-initLoop();
-
 let params = window.document.location.search
     .substring(1)
     .split('&')
@@ -29,3 +27,5 @@ btn.textContent = 'Reload';
 btn.addEventListener('click', () => {
     window.location.reload();
 });
+
+initLoop();
