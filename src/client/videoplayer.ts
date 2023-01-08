@@ -16,10 +16,8 @@ export class VideoPlayer {
     private tvPosition = new Vector3();
     private translateVec = new Vector3(0, 0, 0);
     private zoomPercentage = 100;
-    private defaultWidth = 0.54;
-    private defaultHeight = 0.3;
 
-    constructor(private eventHandlers: IPlayerEventHandlers, private licenseReqDecorator: (request: shaka.extern.Request) => Promise<shaka.extern.Request>) {
+    constructor(private eventHandlers: IPlayerEventHandlers, private licenseReqDecorator: (request: shaka.extern.Request) => Promise<shaka.extern.Request>, private defaultWidth = 0.54, private defaultHeight = 0.3) {
         this.videoElement = document.createElement('video');
         this.videoElement.crossOrigin = 'anonymous';
         this.videoElement.preload = 'auto';

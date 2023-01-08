@@ -59,13 +59,17 @@ export abstract class CinemaSession {
     protected abstract onPlay(): void;
     protected abstract onPause(): void;
 
-    protected async setupVideoPlayer(tvPlaceholder: Object3D, defaultZoom: number, defaultTranslation: Vector3) {
+    protected async setupVideoPlayer(tvPlaceholder: Object3D, defaultZoom: number, defaultTranslation: Vector3, defaultWidth?: number, defaultHeight?: number) {
         if (this.videoPlayer === undefined) {
-            this.videoPlayer = new VideoPlayer({
-                onLoading: this.onLoading,
-                onPause: this.onPause,
-                onPlay: this.onPlay,
-            }, this.handleLicenseReq);
+            this.videoPlayer = new VideoPlayer(
+                {
+                    onLoading: () => this.onLoading(),
+                    onPause: () => this.onPause(),
+                    onPlay: () => this.onPlay(),
+                },
+                this.handleLicenseReq,
+                defaultWidth,
+                defaultHeight);
             await this.videoPlayer.init(this.remoteAsset);
         }
 

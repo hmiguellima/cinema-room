@@ -1,4 +1,4 @@
-import { Group, Object3D, Vector3 } from "three";
+import { Box3, Group, Object3D, Vector3 } from "three";
 import { CinemaSession } from "../cinema-session";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { ControllersVR, EventType } from "./controllers-vr";
@@ -60,7 +60,10 @@ export class CinemaSessionVR extends CinemaSession {
             this.onError('TV object not found');
             return;
         }
-        this.setupVideoPlayer(this.tv, 100, new Vector3(0, 0, 0));
+        const box = new Box3().setFromObject(this.tv);
+        const tvHeight = (box.max.y - box.min.y) * 0.5;
+        const tvWidth = tvHeight * 1.8;
+        this.setupVideoPlayer(this.tv, 100, new Vector3(0, 0, 0), tvWidth, tvHeight);
     }
 
     protected updateState() {
