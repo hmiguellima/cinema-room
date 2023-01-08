@@ -1,4 +1,4 @@
-import { Box3, Group, Object3D, Vector3 } from "three";
+import { Box3, Group, HemisphereLight, Object3D, Vector3 } from "three";
 import { CinemaSession } from "../cinema-session";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { ControllersVR, EventType } from "./controllers-vr";
@@ -8,6 +8,7 @@ export class CinemaSessionVR extends CinemaSession {
     private tv?: Object3D;
     private room?: Group;
     private controllers?: ControllersVR;
+    private light: HemisphereLight = new HemisphereLight(0xffffff, 0xbbbbff, 1);
 
     constructor(sessionEndCallback: () => void) {
         const xrSessionConfig = {
@@ -31,13 +32,18 @@ export class CinemaSessionVR extends CinemaSession {
 
     protected onPause() {
         this.controllers?.updateInfoText('paused');
+        this.light.intensity = 1;
     }
 
     protected onPlay() {
         this.controllers?.updateInfoText('playing');        
+        this.light.intensity = 0.2;
     }
     
     protected async postInit(): Promise<void> {
+        this.light.position.set(0.5, 1, 0.25);
+        this.scene.add(this.light);
+
         const loader = new GLTFLoader();
         const model = await loader.loadAsync('assets/home-cinema.glb');
 
@@ -52,6 +58,7 @@ export class CinemaSessionVR extends CinemaSession {
         }
         // we need to rotate the room
         this.room.rotateY(Math.PI);
+        this.room.translateY(0.1);
         this.moveToSeat('seat_1');
     }
 

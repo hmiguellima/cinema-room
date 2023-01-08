@@ -1,4 +1,4 @@
-import { Camera, HemisphereLight, Object3D, PerspectiveCamera, Scene, Vector3, WebGLRenderer, WebXRManager } from "three";
+import { Camera, Object3D, PerspectiveCamera, Scene, Vector3, WebGLRenderer, WebXRManager } from "three";
 import { PlayoutData } from "../common/net-scheme";
 import { VideoPlayer } from "./videoplayer";
 
@@ -28,10 +28,6 @@ export abstract class CinemaSession {
 
     public init() {
         const container = document.getElementById('container');
-        const light = new HemisphereLight(0xffffff, 0xbbbbff, 1);
-
-        light.position.set(0.5, 1, 0.25);
-        this.scene.add(light);
 
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.renderer.setSize(window.innerWidth, window.innerHeight);

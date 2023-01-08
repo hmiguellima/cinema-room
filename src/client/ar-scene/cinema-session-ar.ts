@@ -1,4 +1,4 @@
-import { BoxGeometry, Mesh, MeshBasicMaterial, Quaternion, Vector3 } from "three";
+import { BoxGeometry, HemisphereLight, Mesh, MeshBasicMaterial, Quaternion, Vector3 } from "three";
 import { ARButton } from "three/examples/jsm/webxr/ARButton";
 import { EventType } from "./controllers-ar";
 import { ControllersAR } from "./controllers-ar";
@@ -44,6 +44,11 @@ export class CinemaSessionAR extends CinemaSession {
     }
 
     protected postInit() {
+        const light = new HemisphereLight(0xffffff, 0xbbbbff, 1);
+
+        light.position.set(0.5, 1, 0.25);
+        this.scene.add(light);
+
         this.controllers = new ControllersAR(this.renderer.xr, this.scene, this.handleControllerEvent, this.camera);
         this.planeManager = new PlanesManager(this.renderer, this.scene);
         this.initAnchorsListeners();
