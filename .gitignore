@@ -3,4 +3,6 @@ dist-server
 dist
 *.key
 *.pem
+.claude/commands/opsx
+.claude/skills/opsx*
 
