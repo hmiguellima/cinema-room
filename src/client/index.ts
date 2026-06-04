@@ -1,7 +1,7 @@
 import { XRSession } from 'three';
 import { Player } from 'shaka-player';
 import { VRButton } from './VRButton';
-import { ClientToServerEvents, PlayoutData, ServerToClientEvents, User } from '../common/net-scheme';
+import { ClientToServerEvents, PlayoutData, ServerToClientEvents, User, VideoPlayer, PlayerState } from '../common/net-scheme';
 import { HomeCinemaSession } from './cinema-session';
 import { io, Socket } from 'socket.io-client';
 
@@ -30,7 +30,7 @@ function startImmersiveSession(session: XRSession) {
         (session as any).updateTargetFrameRate(60);
     }
 
-    immersiveSession = new HomeCinemaSession(session, videoEl, asset.layout);
+    immersiveSession = new HomeCinemaSession(session, videoEl, asset.layout, !currentUser?.isHost);
     immersiveSession.run();    
     session.addEventListener('end', () => {
         immersiveSession = null;
@@ -60,14 +60,58 @@ function listenToServer() {
         button.disabled = false;
     });
 
+    socket.on('hello', (user: User) => {
+        if (user.id === currentUser?.id && user.isHost) {
+            currentUser.isHost = true;
+        }
+    });
+
     socket.on('roomFull', () => {
         button.innerText = 'ROOM FULL';
+    });
+
+    socket.on('videoUpdate', (video: VideoPlayer) => {
+        if (immersiveSession && !currentUser?.isHost) {
+            immersiveSession.applyVideoState(video);
+        }
     });
 }
 
 function listenToPlayerEvents() {
-    // TODO: listen to state updates from player and video element
-    // TODO: send updates to server
+    if (!videoEl || !videoPlayer || !currentUser) return;
+
+    const getVideoState = (): VideoPlayer['state'] => {
+        if (videoPlayer && videoEl.readyState >= 1) {
+            if (videoEl.paused) return PlayerState.Paused;
+            if (videoEl.seeking) return PlayerState.Seeking;
+            if (videoEl.readyState === 0) return PlayerState.Buffering;
+            return PlayerState.Playing;
+        }
+        return PlayerState.Loading;
+    };
+
+    const emitUpdate = () => {
+        if (!currentUser?.isHost || !videoPlayer || videoEl.readyState < 1) return;
+        const state = getVideoState();
+        socket.emit('videoUpdate', {
+            state,
+            position: videoEl.currentTime,
+        });
+    };
+
+    videoEl.addEventListener('play', emitUpdate);
+    videoEl.addEventListener('pause', emitUpdate);
+    videoEl.addEventListener('seeking', emitUpdate);
+    videoEl.addEventListener('stalled', emitUpdate);
+    videoEl.addEventListener('waiting', emitUpdate);
+
+    setInterval(() => {
+        if (!currentUser?.isHost || !videoPlayer || videoEl.readyState < 1 || videoEl.paused) return;
+        socket.emit('videoUpdate', {
+            state: PlayerState.Playing,
+            position: videoEl.currentTime,
+        });
+    }, 2000);
 }
 
 const selectEl: HTMLSelectElement = document.getElementById('assetSelect') as HTMLSelectElement;
