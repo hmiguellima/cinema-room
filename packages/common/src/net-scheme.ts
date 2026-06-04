@@ -52,11 +52,11 @@ export type FPS = 24 | 30;
 export type PlayoutData = {
     name: string;
     streamUri: string;
-    drmUri?: string;
-    fps: FPS;
     layout: StereoLayout;
+    fps: FPS;
     default?: boolean;
-};
+    drmUri?: string;
+}
 
 export type VideoPlayer = {
     state: PlayerState;
