@@ -1,6 +1,6 @@
 import { Scene, PerspectiveCamera, WebGLRenderer, Object3D, AmbientLight, PointLight, XRSession, Group, sRGBEncoding, Vector3 } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
-import { StereoLayout } from "../common/net-scheme";
+import { StereoLayout, PlayerState, VideoPlayer } from "../common/net-scheme";
 import { Controllers, EventType } from "./controllers";
 
 const DIM_LIGHT_INTENSITY = 0.05;
@@ -31,7 +31,10 @@ export class HomeCinemaSession {
     private xrSession: XRSession |  null;
     private room?: Group;
 
-    constructor(xrSession: XRSession, private video: HTMLVideoElement, private stereoLayout: StereoLayout) {
+    private isFollower: boolean;
+
+    constructor(xrSession: XRSession, private video: HTMLVideoElement, private stereoLayout: StereoLayout, isFollower: boolean = false) {
+        this.isFollower = isFollower;
         this.xrSession = xrSession;
         this.scene = new Scene();
 
@@ -131,6 +134,21 @@ export class HomeCinemaSession {
         }, 1000);
     }
 
+    public applyVideoState(video: VideoPlayer) {
+        if (video.position !== undefined && Math.abs(this.video.currentTime - video.position) > 2) {
+            this.video.currentTime = video.position;
+        }
+        if (video.state === PlayerState.Playing) {
+            if (this.video.paused) {
+                this.video.play();
+            }
+        } else if (video.state === PlayerState.Paused || video.state === PlayerState.Buffering) {
+            if (!this.video.paused) {
+                this.video.pause();
+            }
+        }
+    }
+
     private destroy() {
         window.clearInterval(this.videoQualityInterval);
         window.removeEventListener( 'resize', this.resize);
@@ -167,6 +185,9 @@ export class HomeCinemaSession {
     }
 
     private handleControllerEvent = (evt: EventType) => {
+        if (this.isFollower) {
+            return;
+        }
         switch (evt) {
             case EventType.pause:
                 this.video?.pause();

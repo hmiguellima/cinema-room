@@ -52,6 +52,7 @@ function handleUserUpdate(updatedUser: User) {
 }
 
 function handleVideoUpdate(updatedVideo: VideoPlayer) {
+    videoState = updatedVideo;
     io.emit('videoUpdate', updatedVideo);
 }
 
@@ -71,6 +72,10 @@ function setupNewUser(socket: Socket<ClientToServerEvents, ServerToClientEvents,
         socket.broadcast.emit('joined', user);
         socket.emit('hello', user);
 
+        if (videoState) {
+            socket.emit('videoUpdate', videoState);
+        }
+
         console.log('a user connected', user.id);
     } else {
         socket.emit('roomFull');
@@ -80,6 +85,7 @@ function setupNewUser(socket: Socket<ClientToServerEvents, ServerToClientEvents,
 let uid = 1;
 
 let users: Array<User> = [];
+let videoState: VideoPlayer | null = null;
 const seatMap: Array<number> = [];
 
 const MAX_USERS = 2;

@@ -3,4 +3,7 @@ dist-server
 dist
 *.key
 *.pem
-
+.claude/commands/opsx*
+.claude/skills/opsx*
+.github/prompts/opsx*
+.github/skills/openspec*
