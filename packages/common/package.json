@@ -1,0 +1,17 @@
+{
+  "name": "@cinema-room/common",
+  "version": "1.0.0",
+  "description": "Shared types and interfaces for Cinema Room",
+  "main": "dist/net-scheme.js",
+  "types": "dist/net-scheme.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

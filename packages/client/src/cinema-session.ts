@@ -1,6 +1,6 @@
 import { Scene, PerspectiveCamera, WebGLRenderer, Object3D, AmbientLight, PointLight, XRSession, Group, sRGBEncoding, Vector3 } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
-import { StereoLayout, PlayerState, VideoPlayer } from "../common/net-scheme";
+import { StereoLayout, PlayerState, VideoPlayer } from '@cinema-room/common';
 import { Controllers, EventType } from "./controllers";
 
 const DIM_LIGHT_INTENSITY = 0.05;

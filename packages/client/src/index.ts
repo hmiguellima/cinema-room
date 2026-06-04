@@ -1,7 +1,7 @@
 import { XRSession } from 'three';
 import { Player } from 'shaka-player';
 import { VRButton } from './VRButton';
-import { ClientToServerEvents, PlayoutData, ServerToClientEvents, User, VideoPlayer, PlayerState } from '../common/net-scheme';
+import { ClientToServerEvents, PlayoutData, ServerToClientEvents, User, VideoPlayer, PlayerState } from '@cinema-room/common';
 import { HomeCinemaSession } from './cinema-session';
 import { io, Socket } from 'socket.io-client';
 
